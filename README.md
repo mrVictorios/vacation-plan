@@ -19,7 +19,10 @@ Plan vacations for the whole year with German public holidays, optional bridge d
 - Language/Tooling: TypeScript
 
 ## Project Structure
-- `src/components/`: Calendar, MonthView, DayCell, VacationManager, AutoPlan, Legend, LocaleSwitcher, RegionSelector
+- `src/components/` (Atomic Design on branch `feat/atomic-design`):
+  - `atoms/`: minimal UI units (e.g., `DayCell.svelte`)
+  - `molecules/`: small composed units (e.g., `Legend.svelte`, `LocaleSwitcher.svelte`, `RegionSelector.svelte`)
+  - `organisms/`: complex composed sections (e.g., `Calendar.svelte`, `MonthView.svelte`, `VacationManager.svelte`, `AutoPlan.svelte`, `SharePlan.svelte`)
 - `src/stores/`: `year`, `vacation`, `locale`, `region`, `holidays`, `autoPlanner`
 - `src/lib/`: `date.ts`, `holidays.ts`, `holidays_fetch.ts`, `auto_planner.ts`, `i18n.ts`, `school_holidays.ts`
 - `public/404.html`: SPA redirect for GitHub Pages
