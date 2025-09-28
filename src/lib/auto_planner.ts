@@ -188,8 +188,8 @@ function enumerateDays(start: Date, end: Date, holidays: Map<string, string>): D
 }
 
 function enumerateWindows(
-  days: DayInfo[],
-  settings: AutoPlannerSettings,
+  allDays: DayInfo[],
+  plannerSettings: AutoPlannerSettings,
   bridgeDaysForScore: Set<string>,
   excludeBridgeDays: Set<string>
 ): Window[] {
@@ -197,13 +197,13 @@ function enumerateWindows(
   const minLen = 7; // prefer long-term vacations (>= 7 contiguous days off)
   const ignored = new Set<number>(settings.ignoredMonths ?? []);
   const res: Window[] = [];
-  for (let i = 0; i < days.length; i++) {
-    for (let L = minLen; L <= maxLen && i + L <= days.length; L++) {
-      const slice = days.slice(i, i + L);
+  for (let startIndex = 0; startIndex < allDays.length; startIndex++) {
+    for (let windowLength = minLen; windowLength <= maxLen && startIndex + windowLength <= allDays.length; windowLength++) {
+      const slice = allDays.slice(startIndex, startIndex + windowLength);
       const needed = slice.reduce((a, d) => a + (d.isWorking ? 1 : 0), 0);
       if (needed === 0) continue;
       // base score with stronger encouragement for crossing the 7-day threshold
-      const totalLen = L;
+      const totalLen = windowLength;
       let score = totalLen < 7 ? totalLen * 0.5 : (totalLen === 7 ? 8 : 8 + (totalLen - 7) * 0.5);
       // weekend extension preference
       const startDow = slice[0].date.getDay();
@@ -217,16 +217,16 @@ function enumerateWindows(
       }
       // month balance: moderate bonus for spring/summer/autumn over clustering in one season
       const midDate = slice[Math.floor(slice.length / 2)].date;
-      const mid = midDate.getMonth();
-      const seasonal = seasonWeight(mid);
+      const midMonth = midDate.getMonth();
+      const seasonal = seasonWeight(midMonth);
       score += seasonal;
 
       // Skip if any working day within the window falls into an ignored month
       let includesIgnored = false;
       for (const di of slice) {
         if (di.isWorking) {
-          const month = di.date.getMonth();
-          if (ignored.has(month)) {
+          const monthIndex = di.date.getMonth();
+          if (ignored.has(monthIndex)) {
             includesIgnored = true;
             break;
           }
@@ -243,8 +243,8 @@ function enumerateWindows(
       const isoSet = new Set<string>(slice.filter((d) => d.isWorking).map((d) => d.iso));
       // prefer windows that require fewer vacation days for the benefit
       score = score / needed;
-      if (!ignored.has(mid)) {
-        res.push({ start: i, end: i + L - 1, needed, score, isoSet, midMonth: mid, quarter: Math.floor(mid / 3) });
+      if (!ignored.has(midMonth)) {
+        res.push({ start: startIndex, end: startIndex + windowLength - 1, needed, score, isoSet, midMonth, quarter: Math.floor(midMonth / 3) });
       }
     }
   }
@@ -261,59 +261,59 @@ function seasonWeight(month: number): number {
 }
 
 function selectWindows(
-  windows: Window[],
-  budget: number,
-  settings: AutoPlannerSettings,
-  preRanges: { start: number; end: number }[] = []
+  candidateWindows: Window[],
+  remainingBudget: number,
+  plannerSettings: AutoPlannerSettings,
+  presetRanges: { start: number; end: number }[] = []
 ): Set<string> {
-  const picked = new Set<string>();
-  const ranges: { start: number; end: number }[] = [...preRanges];
-  let remaining = budget;
+  const pickedDates = new Set<string>();
+  const chosenRanges: { start: number; end: number }[] = [...presetRanges];
+  let remaining = remainingBudget;
   const minGap = 21; // ~3 weeks gap between breaks to avoid clustering
 
   // If even spread preferred, first pick one high-value window per quarter when possible
-  if (settings.preferEvenSpread) {
+  if (plannerSettings.preferEvenSpread) {
     const chosenQuarters = new Set<number>();
     for (let q = 0; q < 4 && remaining > 0; q++) {
-      const candidate = windows
-        .filter(w => w.quarter === q && Math.ceil((w.end - w.start + 1) / 7) <= settings.maxConsecutiveVacationWeeks && w.needed <= remaining)
+      const candidate = candidateWindows
+        .filter(windowInfo => windowInfo.quarter === q && Math.ceil((windowInfo.end - windowInfo.start + 1) / 7) <= plannerSettings.maxConsecutiveVacationWeeks && windowInfo.needed <= remaining)
         .sort((a, b) => b.score - a.score)[0];
       if (!candidate) continue;
       // gap/overlap check
       let ok = true;
-      for (const r of ranges) {
-        const overlap = !(candidate.end < r.start || candidate.start > r.end);
-        const gap = Math.min(Math.abs(candidate.start - r.end), Math.abs(r.start - candidate.end));
+      for (const existingRange of chosenRanges) {
+        const overlap = !(candidate.end < existingRange.start || candidate.start > existingRange.end);
+        const gap = Math.min(Math.abs(candidate.start - existingRange.end), Math.abs(existingRange.start - candidate.end));
         if (overlap || gap < minGap) { ok = false; break; }
       }
       if (ok && !chosenQuarters.has(q)) {
-        for (const iso of candidate.isoSet) picked.add(iso);
-        ranges.push({ start: candidate.start, end: candidate.end });
+        for (const iso of candidate.isoSet) pickedDates.add(iso);
+        chosenRanges.push({ start: candidate.start, end: candidate.end });
         remaining -= candidate.needed;
         chosenQuarters.add(q);
       }
     }
   }
 
-  for (const w of windows) {
+  for (const windowInfo of candidateWindows) {
     if (remaining <= 0) break;
-    if (w.needed > remaining) continue;
+    if (windowInfo.needed > remaining) continue;
     // respect max consecutive vacation weeks
-    const lengthWeeks = Math.ceil((w.end - w.start + 1) / 7);
-    if (lengthWeeks > settings.maxConsecutiveVacationWeeks) continue;
+    const lengthWeeks = Math.ceil((windowInfo.end - windowInfo.start + 1) / 7);
+    if (lengthWeeks > plannerSettings.maxConsecutiveVacationWeeks) continue;
     // overlap and clustering check
     let ok = true;
-    for (const r of ranges) {
-      const overlap = !(w.end < r.start || w.start > r.end);
-      const gap = Math.min(Math.abs(w.start - r.end), Math.abs(r.start - w.end));
+    for (const existingRange of chosenRanges) {
+      const overlap = !(windowInfo.end < existingRange.start || windowInfo.start > existingRange.end);
+      const gap = Math.min(Math.abs(windowInfo.start - existingRange.end), Math.abs(existingRange.start - windowInfo.end));
       if (overlap || gap < minGap) { ok = false; break; }
     }
     if (!ok) continue;
-    for (const iso of w.isoSet) picked.add(iso);
-    ranges.push({ start: w.start, end: w.end });
-    remaining -= w.needed;
+    for (const iso of windowInfo.isoSet) pickedDates.add(iso);
+    chosenRanges.push({ start: windowInfo.start, end: windowInfo.end });
+    remaining -= windowInfo.needed;
   }
-  return picked;
+  return pickedDates;
 }
 
 function fillLongWorkGaps(
@@ -415,22 +415,22 @@ function fillRemaining(
 }
 
 // Anchors: aim for one summer break (Jul–Aug) and one Christmas break (late Dec)
-function pickAnchors(days: DayInfo[], windows: Window[], budget: number, settings: AutoPlannerSettings, schoolHolidays: { start: Date; end: Date; name: string }[]) {
-  const ranges: { start: number; end: number }[] = [];
-  const selected = new Set<string>();
-  let remaining = budget;
+function pickAnchors(allDays: DayInfo[], allWindows: Window[], remainingBudget: number, plannerSettings: AutoPlannerSettings, schoolHolidays: { start: Date; end: Date; name: string }[]) {
+  const chosenRanges: { start: number; end: number }[] = [];
+  const selectedDates = new Set<string>();
+  let remaining = remainingBudget;
   // helper: try pick best window matching predicate
-  const tryPick = (pred: (w: Window) => boolean) => {
-    const candidates = windows
-      .filter(pred)
+  const tryPick = (predicate: (win: Window) => boolean) => {
+    const candidates = allWindows
+      .filter(predicate)
       .sort((a, b) => b.score - a.score);
-    for (const w of candidates) {
-      if (w.needed > remaining) continue;
-      if (Math.ceil((w.end - w.start + 1) / 7) > settings.maxConsecutiveVacationWeeks) continue;
-      if (overlapsAny(w, ranges)) continue;
-      for (const iso of w.isoSet) selected.add(iso);
-      ranges.push({ start: w.start, end: w.end });
-      remaining -= w.needed;
+    for (const candidate of candidates) {
+      if (candidate.needed > remaining) continue;
+      if (Math.ceil((candidate.end - candidate.start + 1) / 7) > plannerSettings.maxConsecutiveVacationWeeks) continue;
+      if (overlapsAny(candidate, chosenRanges)) continue;
+      for (const iso of candidate.isoSet) selectedDates.add(iso);
+      chosenRanges.push({ start: candidate.start, end: candidate.end });
+      remaining -= candidate.needed;
       return true;
     }
     return false;
@@ -438,32 +438,32 @@ function pickAnchors(days: DayInfo[], windows: Window[], budget: number, setting
 
   if (settings.respectSchoolHolidays && schoolHolidays.length > 0) {
     // Choose window with largest overlap with any school holiday period first
-    const scored = windows.map(w => {
-      const overlap = overlapWithSchoolHoliday(w, days, schoolHolidays);
-      return { w, overlap };
+    const scored = allWindows.map(win => {
+      const overlap = overlapWithSchoolHoliday(win, allDays, schoolHolidays);
+      return { win, overlap };
     }).filter(x => x.overlap > 0).sort((a, b) => b.overlap - a.overlap || b.w.score - a.w.score);
-    for (const { w } of scored) {
+    for (const { win } of scored) {
       if (remaining <= 0) break;
-      if (w.needed > remaining) continue;
-      if (Math.ceil((w.end - w.start + 1) / 7) > settings.maxConsecutiveVacationWeeks) continue;
-      if (overlapsAny(w, ranges)) continue;
-      for (const iso of w.isoSet) selected.add(iso);
-      ranges.push({ start: w.start, end: w.end });
-      remaining -= w.needed;
+      if (win.needed > remaining) continue;
+      if (Math.ceil((win.end - win.start + 1) / 7) > plannerSettings.maxConsecutiveVacationWeeks) continue;
+      if (overlapsAny(win, chosenRanges)) continue;
+      for (const iso of win.isoSet) selectedDates.add(iso);
+      chosenRanges.push({ start: win.start, end: win.end });
+      remaining -= win.needed;
       break;
     }
   }
 
   // Summer anchor: window whose mid-month is July/August
-  tryPick((w) => w.midMonth === 6 || w.midMonth === 7);
-
+  tryPick((win) => win.midMonth === 6 || win.midMonth === 7);
+ 
   // Christmas anchor: window ending near end of December
-  tryPick((w) => {
-    const endDate = days[w.end].date;
+  tryPick((win) => {
+    const endDate = allDays[win.end].date;
     return endDate.getMonth() === 11 && endDate.getDate() >= 20;
   });
 
-  return { selected, ranges };
+  return { selected: selectedDates, ranges: chosenRanges };
 }
 
 // Try to select one window whose length in weeks equals maxConsecutiveVacationWeeks

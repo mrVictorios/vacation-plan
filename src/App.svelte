@@ -1,7 +1,6 @@
 <script lang="ts">
   // Root app: composes controls + year calendar
   import { currentYear } from './stores/year';
-  import { holidaysForYear, bridgeDaysForYear } from './lib/holidays';
   import VacationManager from './components/VacationManager.svelte';
   
   import Calendar from './components/Calendar.svelte';
@@ -12,7 +11,7 @@
   import RegionSelector from './components/RegionSelector.svelte';
   import { region } from './stores/region';
   import { holidaysStore, bridgeDaysStore, loadHolidays, loadingHolidays, holidaysError } from './stores/holidays';
-  import { vacationDays, clearAll } from './stores/vacation';
+  import { vacationDays } from './stores/vacation';
   import AutoPlan from './components/AutoPlan.svelte';
   import { getSchoolHolidays } from './lib/school_holidays';
   import { toISODate } from './lib/date';
@@ -38,13 +37,12 @@
   }
   
   function onYearChange(e: Event) {
-    const v = (e.target as HTMLSelectElement).value;
-    const n = parseInt(v, 10);
-    if (!Number.isNaN(n)) {
-      currentYear.set(n);
+    const selectedValue = (e.target as HTMLSelectElement).value;
+    const parsedYear = parseInt(selectedValue, 10);
+    if (!Number.isNaN(parsedYear)) {
+      currentYear.set(parsedYear);
     }
   }
-  import { onMount } from 'svelte';
 
   // Load holidays when year or region changes
   $: loadHolidays($currentYear, $region);
@@ -53,17 +51,17 @@
   const bridgeDays = bridgeDaysStore;
 
   // Derive school holiday dates for highlight
-  const schoolDays = derived([currentYear, region], ([$y, $r]) => {
-    const list = getSchoolHolidays($y, $r);
-    const set = new Set<string>();
-    for (const h of list) {
-      const cur = new Date(h.start);
-      while (cur <= h.end) {
-        set.add(toISODate(cur));
-        cur.setDate(cur.getDate() + 1);
+  const schoolDays = derived([currentYear, region], ([$yearValue, $regionCode]) => {
+    const holidayRanges = getSchoolHolidays($yearValue, $regionCode);
+    const datesSet = new Set<string>();
+    for (const range of holidayRanges) {
+      const currentDate = new Date(range.start);
+      while (currentDate <= range.end) {
+        datesSet.add(toISODate(currentDate));
+        currentDate.setDate(currentDate.getDate() + 1);
       }
     }
-    return set;
+    return datesSet;
   });
 </script>
 

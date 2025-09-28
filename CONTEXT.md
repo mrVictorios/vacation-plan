@@ -82,8 +82,13 @@ This document captures the architecture, key decisions, and extension points to 
 - SRP: each component handles one concern; keep logic in `lib/*` or stores.
 - Types: prefer explicit types for store values and function returns.
 - Naming: kebab‑case files; PascalCase Svelte components; `*.types.ts` for shared types.
- - Styling: use Tailwind utility classes; centralize tokens in config or `app.css`.
- - Conditionals: avoid “elvis”/ternary (`a ? b : c`) and nullish coalescing (`??`) in TS; prefer explicit `if` statements for readability. In Svelte templates, favor `{#if}{:else}` blocks over inline ternaries. Compute complex class strings/handlers in the script block.
+- Styling: use Tailwind utility classes; centralize tokens in config or `app.css`.
+- Conditionals: avoid “elvis”/ternary (`a ? b : c`) and nullish coalescing (`??`) in TS; prefer explicit `if` statements for readability. In Svelte templates, favor `{#if}{:else}` blocks over inline ternaries. Compute complex class strings/handlers in the script block.
+- Clean code:
+  - Remove unused imports and dead code promptly.
+  - Keep functions small and pure; extract helpers (handlers, computed classes).
+  - Avoid magic numbers; co-locate small constants or add short comments.
+  - Validate and clamp persisted settings; handle errors gracefully.
 
 ## Known Trade‑offs
 - Bridge day rules are heuristic; may need regional/company overrides.

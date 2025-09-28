@@ -109,14 +109,14 @@
     <div class="col-span-2">
       <div class="text-xs text-zinc-600 dark:text-zinc-300 mb-1">{ $locale === 'de-DE' ? 'Monate ausschließen' : 'Exclude months' }</div>
       <div class="grid grid-cols-3 sm:grid-cols-4 gap-1">
-        {#each Array.from({ length: 12 }, (_, m) => m) as m}
+        {#each Array.from({ length: 12 }, (_, monthNumber) => monthNumber) as monthNumber}
           <label class="inline-flex items-center gap-2 px-2 py-1 rounded border border-zinc-200 dark:border-md-outline hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer">
             <input type="checkbox"
-              checked={$autoPlannerSettings.ignoredMonths.includes(m)}
-              on:change={(e) => onIgnoreMonthChange(m, e)}
+              checked={$autoPlannerSettings.ignoredMonths.includes(monthNumber)}
+              on:change={(e) => onIgnoreMonthChange(monthNumber, e)}
             />
             <span class="text-xs">
-              {new Intl.DateTimeFormat($locale, { month: 'long' }).format(new Date(2025, m, 1))}
+              {new Intl.DateTimeFormat($locale, { month: 'long' }).format(new Date(2025, monthNumber, 1))}
             </span>
           </label>
         {/each}
