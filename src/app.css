@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* App-level tweaks */
+:root {
+  --ring: 2px;
+}
+
+html, body, #app {
+  height: 100%;
+}
+
+/* Full-width layout by default */
+.container-max { @apply w-full px-4; }
+
+.card {
+  @apply bg-white dark:bg-ios-surface border border-gray-200 dark:border-ios-border rounded-xl shadow-sm;
+}
+
+.badge {
+  @apply inline-flex items-center gap-1 text-xs font-medium rounded-full px-2 py-0.5 border;
+}
+
+/* Prefer system appearance */
+:root { color-scheme: light dark; }

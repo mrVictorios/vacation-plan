@@ -1,0 +1,15 @@
+<script lang="ts">
+  import MonthView from './MonthView.svelte';
+  import type { Readable } from 'svelte/store';
+
+  export let year: number;
+  // Maps and sets are provided via stores so they recompute when year changes
+  export let holidays: Readable<Map<string, string>>; // ISO date -> holiday name
+  export let bridgeDays: Readable<Set<string>>; // ISO date strings
+</script>
+
+<div class="grid h-full grid-cols-3 grid-rows-4 gap-2">
+  {#each Array.from({ length: 12 }, (_, i) => i) as month}
+    <MonthView {year} {month} {holidays} {bridgeDays} />
+  {/each}
+</div>

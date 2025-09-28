@@ -1,0 +1,17 @@
+{
+  "extends": "@tsconfig/svelte/tsconfig.json",
+  "include": [
+    "src/**/*",
+    "src/node_modules/**/*",
+    "vite.config.ts"
+  ],
+  "compilerOptions": {
+    "types": ["svelte"],
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "baseUrl": "."
+  }
+}
+
