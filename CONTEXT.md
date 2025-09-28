@@ -62,7 +62,7 @@ This document captures the architecture, key decisions, and extension points to 
 - Persistence:
   - Persist planner settings and preview; add schema versioning.
  - Export/Share:
-  - Export/import JSON. Generate shareable URLs with LZ‑string compressed payload and compact runs encoding for selected dates; load on startup if present.
+  - Export/import JSON. URL hash auto‑updates with LZ‑string compressed payload and compact runs encoding for selected dates; load on startup if present.
  - Density & Zoom:
   - Compact/Comfort density toggle; zoom slider scales the calendar; the calendar pane scrolls if necessary.
 - Tests/CI:
@@ -77,7 +77,8 @@ This document captures the architecture, key decisions, and extension points to 
   - `tests/i18n.test.ts` — i18n helpers.
   - `tests/auto_planner*.test.ts` — planner behavior (long breaks, ignore months, bridge toggle, school holidays, greedy fill).
  - Coverage: `npm run test:coverage` (v8). Thresholds ≥60% lines/statements/functions, 50% branches on `src/lib/**`.
- - CI: `.github/workflows/ci.yml` runs unit tests and uploads coverage artifacts on push/PR.
+ - E2E: Playwright verifies share link round‑trip (copy, reload, restore). Config in `playwright.config.ts`.
+ - CI: `.github/workflows/ci.yml` runs unit tests/coverage and ESLint.
 
 ## Coding Guidelines
 - SRP: each component handles one concern; keep logic in `lib/*` or stores.

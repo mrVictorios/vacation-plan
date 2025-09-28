@@ -3,16 +3,14 @@
 Plan vacations for the whole year with German public holidays, optional bridge days, school holidays, and your own vacation allocation. The UI supports German/English, follows a Material‑style light/dark theme, and shows all 12 months at once (with zoom + scroll if needed).
 
 ## Features
-- Full‑year calendar: 3×4 grid, Monday–Sunday, compact layout.
-- Saxony holidays (incl. Buß‑ und Bettag) + computed bridge days; select any German state (runtime fetch with fallback).
-- Manage vacation allocation: set total, select workdays (vacation shown in green), see remaining.
-- Automatic planning with preview variants: long breaks (≥7 days), even spread across the year, bridge‑day toggle, ignore months, optional school‑holiday preference; one occurrence of max vacation weeks where possible.
-- School holidays highlighted in calendar and legend.
-- Share plans: export/import JSON and copy a shareable link with the plan embedded in the URL hash (LZ‑string compressed).
- - Responsive layout: 1 month per row on mobile, 2 on small screens, 3 on desktop; zoom + scroll when needed.
-- Dark mode (system‑driven), accessible focus states, high contrast.
-- Localization: DE/EN with a toggle; German date formats by default.
-- GitHub Pages deployment ready.
+- Responsive calendar: 1 month per row on mobile, 2 on small screens, 3 on desktop; density (Compact/Comfort) and zoom + scroll.
+- Region holidays: fetch German public holidays per Bundesland (fallback if offline) and compute bridge days.
+- School holidays: highlighted in calendar and legend; optional preference in the planner.
+- Vacation selection: set total, click workdays (green) to toggle; today highlighted.
+- Auto planner: long breaks (≥7 days), summer/Christmas anchors, even spread, max vacation/work weeks, min break days, ignore months, greedy fill; one max‑week window where possible; multiple ranked variants (deterministic with seed).
+- Share: export/import JSON; shareable link auto‑updates in the URL hash with compact LZ‑string payload.
+- Persistence: year, region, locale, density, zoom, planner parameters, total/selected days, and active tab saved to localStorage.
+- Dark mode & i18n: Material theme, DE/EN labels, accessible focus states.
 
 ## Tech Stack
 - Frontend: Svelte 4 + Vite 5
@@ -35,7 +33,7 @@ Plan vacations for the whole year with German public holidays, optional bridge d
 
 ## CI
 - GitHub Actions runs unit tests and coverage on every push/PR (`.github/workflows/ci.yml`).
- - Lint job runs ESLint (`npm run lint`).
+- Lint job runs ESLint (`npm run lint`).
 
 ## Usage
 - Year selector (top right) changes the calendar year.
@@ -43,7 +41,7 @@ Plan vacations for the whole year with German public holidays, optional bridge d
 - Set your total vacation days; click workdays to toggle vacation (green). The calendar fully refreshes per year to reflect new holidays and school breaks.
 - Colors: green = vacation, red = holiday, amber = bridge day, gray = weekend, emerald tint = school holidays.
 - Automatic Planning: set parameters (bridge days on/off, max vacation/work weeks, even spread, ignore months, respect school holidays), generate multiple preview variants, and apply the plan.
-- Share: in the sidebar “Share plan” — export JSON, import from file/JSON, or copy a link. Opening a link with `#plan=...` will load the shared plan.
+- Share: in the sidebar “Share plan” — export JSON, import from file/JSON, or copy a link. The URL hash auto‑updates with the current plan and can be shared directly.
 - Density & Zoom: use the Compact/Comfort toggle and Zoom slider to fit the full year; the calendar pane scrolls if necessary.
 - Tabs: the sidebar groups Vacation, Auto Plan, and Share in tabs.
 - Persistence: UI/planner settings and state are saved to localStorage (density, zoom, planner parameters, selected year, region, vacation days, total days, locale).
