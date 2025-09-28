@@ -13,6 +13,17 @@
   import { region } from './stores/region';
   import { holidaysStore, bridgeDaysStore, loadHolidays, loadingHolidays, holidaysError } from './stores/holidays';
   import { vacationDays, clearAll } from './stores/vacation';
+  import AutoPlan from './components/AutoPlan.svelte';
+  import { getSchoolHolidays } from './lib/school_holidays';
+  import { toISODate } from './lib/date';
+  
+  function onYearChange(e: Event) {
+    const v = (e.target as HTMLSelectElement).value;
+    const n = parseInt(v, 10);
+    if (!Number.isNaN(n)) {
+      currentYear.set(n);
+    }
+  }
   import { onMount } from 'svelte';
 
   // Load holidays when year or region changes
@@ -20,13 +31,27 @@
 
   const holidays = holidaysStore;
   const bridgeDays = bridgeDaysStore;
+
+  // Derive school holiday dates for highlight
+  const schoolDays = derived([currentYear, region], ([$y, $r]) => {
+    const list = getSchoolHolidays($y, $r);
+    const set = new Set<string>();
+    for (const h of list) {
+      const cur = new Date(h.start);
+      while (cur <= h.end) {
+        set.add(toISODate(cur));
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+    return set;
+  });
 </script>
 
 <main class="w-full h-full min-h-full p-3 md:p-4 flex flex-col gap-3">
   <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">
-        {#if $locale === 'de-DE'}Urlaubsplaner — Sachsen (DE){:else}Vacation Planner — Saxony (DE){/if}
+        {#if $locale === 'de-DE'}Urlaubsplaner — Sachsen (DE){:else}Vacation Planner{/if}
       </h1>
       <p class="text-sm text-zinc-600 dark:text-zinc-400">
         {#if $locale === 'de-DE'}Feiertage für Sachsen, Brückentage automatisch berechnet. Weise Urlaubstage zu und optimiere lange Wochenenden.{:else}Public holidays for Saxony; bridge days auto-computed. Assign vacation days to plan long weekends.{/if}
@@ -36,17 +61,12 @@
       <LocaleSwitcher />
       <RegionSelector />
       <label class="text-sm text-zinc-600 dark:text-zinc-300 ml-2" for="year">{ $locale === 'de-DE' ? 'Jahr' : 'Year' }</label>
-      <select id="year" class="border border-zinc-300 dark:border-md-outline rounded-lg px-2 py-1 text-sm bg-white dark:bg-md-surfaceDark text-zinc-900 dark:text-md-onSurfaceDark focus:outline-none focus-visible:ring-2 focus-visible:ring-md-primary" bind:value={$currentYear}>
+      <select id="year" class="border border-zinc-300 dark:border-md-outline rounded-lg px-2 py-1 text-sm bg-white dark:bg-md-surfaceDark text-zinc-900 dark:text-md-onSurfaceDark focus:outline-none focus-visible:ring-2 focus-visible:ring-md-primary" value={$currentYear} on:change={onYearChange}>
         {#each Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 1 + i) as y}
           <option value={y}>{y}</option>
         {/each}
       </select>
-      <button
-        class="ml-2 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-md-outline bg-white dark:bg-md-surfaceDark text-sm text-zinc-800 dark:text-md-onSurfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-md-primary disabled:opacity-50"
-        on:click={() => { if (confirm($locale === 'de-DE' ? 'Alle ausgewählten Tage zurücksetzen?' : 'Reset all selected days?')) clearAll(); }}
-        disabled={$vacationDays.size === 0}
-        aria-disabled={$vacationDays.size === 0}
-      >{ $locale === 'de-DE' ? 'Tage zurücksetzen' : 'Reset days' }</button>
+      
     </div>
   </header>
 
@@ -66,12 +86,19 @@
       </div>
       <div class="mt-2 h-full min-h-0">
         <!-- Full-year calendar -->
-        <Calendar {holidays} {bridgeDays} year={$currentYear} />
+        {#key $currentYear}
+          <Calendar {holidays} {bridgeDays} year={$currentYear} schoolDays={schoolDays} />
+        {/key}
       </div>
     </div>
 
-    <div class="card p-3 md:p-4 h-fit lg:sticky lg:top-3 self-start hidden lg:block">
-      <VacationManager />
+    <div class="hidden lg:flex lg:flex-col lg:gap-3 lg:sticky lg:top-3 self-start">
+      <div class="card p-3 md:p-4">
+        <VacationManager />
+      </div>
+      <div class="card p-3 md:p-4">
+        <AutoPlan />
+      </div>
     </div>
   </section>
   

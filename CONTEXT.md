@@ -5,15 +5,16 @@ This document captures the architecture, key decisions, and extension points to 
 ## Goals & Scope
 - Single‑page Svelte app to plan yearly vacations for Germany (configurable region/Bundesland; default Saxony).
 - Fast, resilient UI with offline‑friendly fallbacks (no backend).
-- All 12 months visible without scrolling; clear states for holidays, bridge days, weekends, vacation.
+- All 12 months visible without scrolling; clear states for holidays, bridge days, weekends, vacation; optional school holiday highlight.
 
 ## Architecture Overview
 - Composition
   - `App.svelte`: shell, header (locale/year), layout, includes Legend, Calendar, VacationManager.
   - `components/Calendar.svelte`: 3×4 month grid.
   - `components/MonthView.svelte`: one month; weekday header + day grid.
-  - `components/DayCell.svelte`: single day state + selection.
-  - `components/VacationManager.svelte`: allocation, remaining, selected list.
+  - `components/DayCell.svelte`: single day state + selection; visual states for holidays, bridge days, school holidays, weekends, vacation (green).
+  - `components/VacationManager.svelte`: allocation, remaining, selected list (table), prominent reset.
+  - `components/AutoPlan.svelte`: automatic planner with preview variants and parameters.
   - `components/LocaleSwitcher.svelte`: DE/EN toggle.
   - `components/RegionSelector.svelte`: German state selector.
   
@@ -23,12 +24,14 @@ This document captures the architecture, key decisions, and extension points to 
   - `stores/locale.ts`: UI locale with localStorage persistence.
   - `stores/region.ts`: selected German region.
   - `stores/holidays.ts`: holidays/bridge days derived from network fetch; loading/error state.
-  - `stores/planner.ts`: settings (constraints, weights, preferences), preview, reset.
+  - `stores/autoPlanner.ts`: auto‑planning parameters (bridge toggle, max weeks, even spread, ignore months, school holidays).
 - Utilities
   - `lib/date.ts`: ISO formatting, month iteration, helpers.
   - `lib/holidays.ts`: Saxony holidays + bridge‑day rules; `bridgeDaysFromHolidays`.
   - `lib/holidays_fetch.ts`: fetch regional holidays with memory + localStorage cache and fallbacks.
   - `lib/i18n.ts`: month/weekday names, date formatting.
+  - `lib/auto_planner.ts`: anchor‑first long‑break planner with variants, even spread, ignore months, bridge‑day toggle, one max‑week occurrence, greedy fill.
+  - `lib/school_holidays.ts`: placeholder provider for school holiday periods per region.
   
 
 ## Key Decisions
@@ -39,7 +42,7 @@ This document captures the architecture, key decisions, and extension points to 
 - Layout:
   - 3×4 grid; compact typography; `auto-rows-fr` day grid for equal cell heights. Sidebar hidden below `lg` to keep no‑scroll guarantee.
 - Styling:
-  - Tailwind with Apple HIG‑inspired tokens; iOS accent; system‑driven dark mode (`prefers-color-scheme`).
+  - Tailwind with Material‑inspired tokens and system‑driven dark mode; vacation = green for clear affordance.
 - Accessibility:
   - `focus-visible` rings, adequate contrast, ARIA roles for calendar grid/headers, descriptive localized `aria-label` per day; respects `prefers-reduced-motion`.
 - Localization:
@@ -60,17 +63,21 @@ This document captures the architecture, key decisions, and extension points to 
   - Add component and E2E tests (Playwright); integrate into GitHub Actions.
 
 ## Testing
-- Framework: Vitest (unit tests only at present).
+- Framework: Vitest.
 - Suites:
   - `tests/date.test.ts` — date utilities.
   - `tests/holidays.test.ts` — Saxony date rules and bridge day example.
- - Scripts: `npm run test`, `test:run`, `test:coverage`.
+  - `tests/holidays_fetch.test.ts` — network fallback behavior.
+  - `tests/i18n.test.ts` — i18n helpers.
+  - `tests/auto_planner*.test.ts` — planner behavior (long breaks, ignore months, bridge toggle, school holidays, greedy fill).
+- Coverage: `npm run test:coverage` (v8). Thresholds ≥60% lines/statements/functions, 50% branches on `src/lib/**`.
 
 ## Coding Guidelines
 - SRP: each component handles one concern; keep logic in `lib/*` or stores.
 - Types: prefer explicit types for store values and function returns.
 - Naming: kebab‑case files; PascalCase Svelte components; `*.types.ts` for shared types.
 - Styling: use Tailwind utility classes; centralize tokens in config or `app.css`.
+- Conditionals: avoid “elvis”/ternary (`a ? b : c`) and nullish coalescing (`??`) in TS; prefer explicit `if` statements for readability. In Svelte templates, favor `{#if}{:else}` blocks over inline ternaries.
 
 ## Known Trade‑offs
 - Bridge day rules are heuristic; may need regional/company overrides.

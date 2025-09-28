@@ -17,7 +17,14 @@
 </script>
 
 <div class="space-y-4">
-  <h2 class="text-lg font-semibold">{ $locale === 'de-DE' ? 'Dein Urlaub' : 'Your Vacation' }</h2>
+  <div class="flex items-center justify-between">
+    <h2 class="text-lg font-semibold">{ $locale === 'de-DE' ? 'Dein Urlaub' : 'Your Vacation' }</h2>
+    {#if $vacationDays.size > 0}
+      <button class="px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+        on:click={clearAll}
+      >{ $locale === 'de-DE' ? 'Alle zurücksetzen' : 'Reset all' }</button>
+    {/if}
+  </div>
 
   <div class="flex items-center gap-3">
     <label class="text-sm text-zinc-700 dark:text-zinc-300" for="days">{ $locale === 'de-DE' ? `Verfügbar (${$currentYear})` : `Available (${$currentYear})` }</label>
@@ -34,15 +41,26 @@
     {#if $vacationDays.size === 0}
       <p class="text-sm text-zinc-500 dark:text-zinc-400">{ $locale === 'de-DE' ? 'Noch keine Tage gewählt. Klicke im Kalender auf Arbeitstage.' : 'No days selected yet. Click on working days in the calendar.' }</p>
     {:else}
-      <ul class="max-h-48 overflow-auto divide-y divide-zinc-200 dark:divide-md-outline text-sm">
-        {#each Array.from($vacationDays).sort() as d}
-          <li class="flex items-center justify-between py-1">
-            <span class="text-zinc-800 dark:text-md-onSurfaceDark">{new Date(d).toLocaleDateString($locale)}</span>
-            <button class="text-red-600 dark:text-red-400 hover:underline" on:click={() => remove(d)}>{ $locale === 'de-DE' ? 'Entfernen' : 'Remove' }</button>
-          </li>
-        {/each}
-      </ul>
-      <button class="mt-2 text-xs text-zinc-600 dark:text-zinc-400 hover:underline" on:click={clearAll}>{ $locale === 'de-DE' ? 'Alle löschen' : 'Clear all' }</button>
+      <div class="max-h-56 overflow-auto border border-zinc-200 dark:border-md-outline rounded-lg">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+            <tr>
+              <th class="text-left px-3 py-2">{ $locale === 'de-DE' ? 'Datum' : 'Date' }</th>
+              <th class="text-right px-3 py-2">{ $locale === 'de-DE' ? 'Aktionen' : 'Actions' }</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-zinc-200 dark:divide-md-outline">
+            {#each Array.from($vacationDays).sort() as d}
+              <tr>
+                <td class="px-3 py-2 text-zinc-800 dark:text-md-onSurfaceDark">{new Date(d).toLocaleDateString($locale)}</td>
+                <td class="px-3 py-2 text-right">
+                  <button class="px-2 py-1 rounded border border-zinc-300 dark:border-md-outline hover:bg-zinc-50 dark:hover:bg-zinc-800" on:click={() => remove(d)}>{ $locale === 'de-DE' ? 'Entfernen' : 'Remove' }</button>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
     {/if}
   </div>
 </div>
