@@ -7,8 +7,8 @@ import { holidaysForYear as holidaysSaxony } from './holidays';
 
 const memCache = new Map<string, Map<string, string>>();
 
-export async function fetchHolidaysForGermanRegion(year: number, region: GermanRegion): Promise<Map<string, string>> {
-  const key = `${year}-${region}`;
+export async function fetchHolidaysForGermanRegion(year: number, regionCode: GermanRegion): Promise<Map<string, string>> {
+  const key = `${year}-${regionCode}`;
   if (memCache.has(key)) return memCache.get(key)!;
   try {
     const cached = typeof localStorage !== 'undefined' ? localStorage.getItem(`holidays:${key}`) : null;
@@ -21,7 +21,7 @@ export async function fetchHolidaysForGermanRegion(year: number, region: GermanR
 
   const map = new Map<string, string>();
   try {
-    const url = `https://feiertage-api.de/api/?jahr=${year}&nur_land=${region}`;
+    const url = `https://feiertage-api.de/api/?jahr=${year}&nur_land=${regionCode}`;
     const res = await fetch(url, { method: 'GET' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -39,29 +39,29 @@ export async function fetchHolidaysForGermanRegion(year: number, region: GermanR
   }
 
   // Fallback: built-in Saxony calculator if SN, otherwise national common holidays
-  const fallback = region === 'SN' ? holidaysSaxony(year) : commonGermany(year);
+  const fallback = regionCode === 'SN' ? holidaysSaxony(year) : commonGermany(year);
   memCache.set(key, fallback);
   return fallback;
 }
 
 // Minimal nationwide holidays (no regional-only days)
 function commonGermany(year: number): Map<string, string> {
-  const list: { date: Date; name: string }[] = [];
-  const E = easterSunday(year);
-  list.push(
+  const holidayList: { date: Date; name: string }[] = [];
+  const easterDate = easterSunday(year);
+  holidayList.push(
     { date: new Date(year, 0, 1), name: 'Neujahr' },
-    { date: addDays(E, -2), name: 'Karfreitag' },
-    { date: addDays(E, 1), name: 'Ostermontag' },
+    { date: addDays(easterDate, -2), name: 'Karfreitag' },
+    { date: addDays(easterDate, 1), name: 'Ostermontag' },
     { date: new Date(year, 4, 1), name: 'Tag der Arbeit' },
-    { date: addDays(E, 39), name: 'Christi Himmelfahrt' },
-    { date: addDays(E, 50), name: 'Pfingstmontag' },
+    { date: addDays(easterDate, 39), name: 'Christi Himmelfahrt' },
+    { date: addDays(easterDate, 50), name: 'Pfingstmontag' },
     { date: new Date(year, 9, 3), name: 'Tag der Deutschen Einheit' },
     { date: new Date(year, 11, 25), name: '1. Weihnachtsfeiertag' },
     { date: new Date(year, 11, 26), name: '2. Weihnachtsfeiertag' },
   );
-  const map = new Map<string, string>();
-  for (const h of list) map.set(h.date.toISOString().slice(0, 10), h.name);
-  return map;
+  const result = new Map<string, string>();
+  for (const holiday of holidayList) result.set(holiday.date.toISOString().slice(0, 10), holiday.name);
+  return result;
 }
 
 // Utilities duplicated to avoid circular import issues

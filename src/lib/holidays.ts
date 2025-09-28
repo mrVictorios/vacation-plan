@@ -34,14 +34,14 @@ function repentanceDay(year: number): Date {
 
 // Public holidays for Saxony (SN), Germany
 export function holidaysForYear(year: number): Map<string, string> {
-  const E = easterSunday(year);
-  const list: { date: Date; name: string }[] = [
+  const easterDate = easterSunday(year);
+  const holidayList: { date: Date; name: string }[] = [
     { date: fixed(year, 0, 1), name: 'Neujahr' },
-    { date: addDays(E, -2), name: 'Karfreitag' },
-    { date: addDays(E, 1), name: 'Ostermontag' },
+    { date: addDays(easterDate, -2), name: 'Karfreitag' },
+    { date: addDays(easterDate, 1), name: 'Ostermontag' },
     { date: fixed(year, 4, 1), name: 'Tag der Arbeit' },
-    { date: addDays(E, 39), name: 'Christi Himmelfahrt' },
-    { date: addDays(E, 50), name: 'Pfingstmontag' },
+    { date: addDays(easterDate, 39), name: 'Christi Himmelfahrt' },
+    { date: addDays(easterDate, 50), name: 'Pfingstmontag' },
     { date: fixed(year, 9, 3), name: 'Tag der Deutschen Einheit' },
     { date: fixed(year, 9, 31), name: 'Reformationstag' },
     { date: repentanceDay(year), name: 'Buß- und Bettag' },
@@ -49,9 +49,9 @@ export function holidaysForYear(year: number): Map<string, string> {
     { date: fixed(year, 11, 26), name: '2. Weihnachtsfeiertag' },
   ];
 
-  const map = new Map<string, string>();
-  for (const h of list) { map.set(toISODate(h.date), h.name); }
-  return map;
+  const result = new Map<string, string>();
+  for (const holiday of holidayList) { result.set(toISODate(holiday.date), holiday.name); }
+  return result;
 }
 
 // Bridge days according to common German practice
@@ -116,14 +116,14 @@ export function bridgeDaysFromHolidays(year: number, holidays: Map<string, strin
     bridges.add(key);
   };
   for (const [isoDate] of holidays) {
-    const d = dateFromISO(isoDate);
-    const wd = d.getDay();
-    if (wd === 0 || wd === 6) continue;
-    if (wd === 2) maybeAdd(addDays(d, -1));
-    else if (wd === 4) maybeAdd(addDays(d, 1));
-    else if (wd === 3) { maybeAdd(addDays(d, -1)); maybeAdd(addDays(d, 1)); }
-    else if (wd === 1) maybeAdd(addDays(d, -3));
-    else if (wd === 5) maybeAdd(addDays(d, 3));
+    const date = dateFromISO(isoDate);
+    const weekday = date.getDay();
+    if (weekday === 0 || weekday === 6) continue;
+    if (weekday === 2) maybeAdd(addDays(date, -1));
+    else if (weekday === 4) maybeAdd(addDays(date, 1));
+    else if (weekday === 3) { maybeAdd(addDays(date, -1)); maybeAdd(addDays(date, 1)); }
+    else if (weekday === 1) maybeAdd(addDays(date, -3));
+    else if (weekday === 5) maybeAdd(addDays(date, 3));
   }
   return bridges;
 }

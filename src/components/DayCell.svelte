@@ -5,13 +5,13 @@
   import { vacationDays, toggleVacation, remainingDays } from '../stores/vacation';
   import { density } from '../stores/ui';
 
-  export let d: Date;
+  export let date: Date;
   export let holidays: Readable<Map<string, string>>;
   export let bridgeDays: Readable<Set<string>>;
   export let schoolDays: Readable<Set<string>>;
 
-  $: iso = toISODate(d);
-  $: isWknd = isWeekend(d);
+  $: iso = toISODate(date);
+  $: isWknd = isWeekend(date);
   $: holidayName = $holidays.get(iso);
   $: isHoliday = Boolean(holidayName);
   $: isBridge = $bridgeDays.has(iso);
@@ -51,7 +51,7 @@
   $: ariaLabel = (() => {
     const loc = $locale;
     const fmt = new Intl.DateTimeFormat(loc, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
-    const base = fmt.format(d);
+    const base = fmt.format(date);
     if (isHoliday) return `${base} — ${holidayName}`;
     if (isBridge) return `${base} — ${loc === 'de-DE' ? 'Brückentag' : 'Bridge day'}`;
     if (isSelected) return `${base} — ${loc === 'de-DE' ? 'Urlaub gewählt' : 'Vacation selected'}`;
@@ -79,7 +79,7 @@
   aria-pressed={isSelected}
   aria-label={ariaLabel}
 >
-  <span class={`font-semibold ${dateSizeClasses}`}>{d.getDate()}</span>
+  <span class={`font-semibold ${dateSizeClasses}`}>{date.getDate()}</span>
   {#if isHoliday}
     <span class="truncate max-w-[6rem]" aria-label="Holiday">{holidayName}</span>
   {:else if isBridge}
