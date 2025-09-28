@@ -23,15 +23,15 @@
     <span class="text-[10px] text-zinc-400 dark:text-zinc-500">{days.length}d</span>
   </h3>
   <!-- 7-column grid starting Monday -->
-  <div class="grid grid-cols-7 auto-rows-fr gap-[2px] text-[10px] flex-1 min-h-0">
+  <div class="grid grid-cols-7 auto-rows-fr gap-[2px] text-[10px] flex-1 min-h-0" role="rowgroup">
     <!-- Weekday headers (Mon-Sun, localized) -->
     {#each weekdays as w}
-      <div class="text-zinc-500 dark:text-zinc-400 text-[10px] text-center py-0.5">{w}</div>
+      <div class="text-zinc-500 dark:text-zinc-400 text-[10px] text-center py-0.5" role="columnheader" aria-label={w}>{w}</div>
     {/each}
 
     <!-- leading blanks to align first weekday (Mon-based) -->
     {#each Array((new Date(year, month, 1).getDay() + 6) % 7).fill(0) as _}
-      <div class="py-0.5"></div>
+      <div class="py-0.5" role="gridcell" aria-hidden="true"></div>
     {/each}
 
     {#each days as d}

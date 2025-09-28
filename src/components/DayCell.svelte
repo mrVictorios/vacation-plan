@@ -22,22 +22,33 @@
     if (!isSelected && $remainingDays <= 0) return;
     toggleVacation(iso);
   }
+
+  $: ariaLabel = (() => {
+    const loc = $locale;
+    const fmt = new Intl.DateTimeFormat(loc, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    const base = fmt.format(d);
+    if (isHoliday) return `${base} — ${holidayName}`;
+    if (isBridge) return `${base} — ${loc === 'de-DE' ? 'Brückentag' : 'Bridge day'}`;
+    if (isSelected) return `${base} — ${loc === 'de-DE' ? 'Urlaub gewählt' : 'Vacation selected'}`;
+    if (isWknd) return `${base} — ${loc === 'de-DE' ? 'Wochenende' : 'Weekend'}`;
+    return `${base} — ${loc === 'de-DE' ? 'Arbeitstag' : 'Workday'}`;
+  })();
 </script>
 
 <button
-  class="relative h-full flex flex-col items-center justify-center border rounded-md py-1 transition-colors select-none
+  class="relative h-full flex flex-col items-center justify-center border rounded-lg py-1 min-h-[36px] transition-colors select-none touch-manipulation
     text-[10px] text-center overflow-hidden font-medium
-    focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:focus-visible:ring-sky-300 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent
+    focus:outline-none focus-visible:ring-2 focus-visible:ring-md-primary focus-visible:ring-offset-1 focus-visible:ring-offset-transparent
     disabled:opacity-60 disabled:cursor-not-allowed
     {isSelected
-      ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-500 active:bg-sky-700'
+      ? 'bg-md-primary text-md-onPrimary border-md-primary hover:opacity-95 active:opacity-90'
       : isHoliday
         ? 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800'
         : isBridge
           ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800'
           : isWknd
             ? 'bg-zinc-50 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
-            : 'bg-white dark:bg-ios-surface text-zinc-900 dark:text-ios-text border-zinc-200 dark:border-ios-border hover:bg-zinc-50 dark:hover:bg-zinc-800 active:bg-zinc-100 dark:active:bg-zinc-700'}"
+            : 'bg-white dark:bg-md-surfaceDark text-zinc-900 dark:text-md-onSurfaceDark border-zinc-200 dark:border-md-outline hover:bg-zinc-50 dark:hover:bg-zinc-800 active:bg-zinc-100 dark:active:bg-zinc-700'}"
   on:click={onClick}
   title={
     isHoliday
@@ -48,6 +59,8 @@
           ? ($locale === 'de-DE' ? 'Urlaub gewählt' : 'Vacation selected')
           : ($locale === 'de-DE' ? 'Arbeitstag' : 'Workday')
   }
+  aria-pressed={isSelected}
+  aria-label={ariaLabel}
 >
   <span class="font-semibold text-[11px]">{d.getDate()}</span>
   {#if isHoliday}

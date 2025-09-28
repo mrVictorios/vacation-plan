@@ -6,9 +6,11 @@ Plan vacations for the whole year with public holidays, bridge days, and your ow
 - Full‑year calendar: 3×4 grid, Monday–Sunday, compact layout.
 - Saxony holidays (incl. Buß‑ und Bettag) + computed bridge days.
 - Manage vacation allocation: set total, select workdays, see remaining.
+ 
 - Dark mode (system‑driven), accessible focus states, high contrast.
 - Localization: DE/EN with a toggle; German date formats by default.
 - GitHub Pages deployment ready.
+ - Regional holidays: Select any German state; holidays fetched at runtime with fallback logic.
 
 ## Tech Stack
 - Frontend: Svelte 4 + Vite 5
@@ -31,9 +33,10 @@ Plan vacations for the whole year with public holidays, bridge days, and your ow
 
 ## Usage
 - Year selector (top right) changes the calendar year.
-- Locale switcher (DE/EN) next to the year selector.
+- Locale switcher (DE/EN) and German region selector (Bundesland) next to the year selector.
 - Set your total vacation days in the sidebar; click workdays to toggle vacation.
 - Colors: blue = vacation, red = holiday, amber = bridge day, gray = weekend.
+ 
 
 ## Deployment (GitHub Pages)
 - The app is configured with `base: '/vacation-plan/'` in `vite.config.ts`. If your repo name differs, update this value.
@@ -41,7 +44,7 @@ Plan vacations for the whole year with public holidays, bridge days, and your ow
 - The workflow `.github/workflows/pages.yml` builds on pushes to `main` and deploys `dist/`.
 
 ## Customization
-- Region/holidays: edit `src/lib/holidays.ts` to change rules or switch region.
+- Region/holidays: at runtime, holidays are fetched from feiertage-api.de for the selected state. If network fails, the app falls back to built‑in rules (Saxony or national common holidays). To change logic, see `src/lib/holidays_fetch.ts` and `src/lib/holidays.ts`.
 - Density/layout: adjust sizing in `MonthView.svelte` and `DayCell.svelte`.
 - Color theme: tune Tailwind tokens in `tailwind.config.cjs` and styles in `src/app.css`.
 
@@ -51,4 +54,3 @@ Plan vacations for the whole year with public holidays, bridge days, and your ow
 
 ## License
 - MIT — see `LICENSE`.
-

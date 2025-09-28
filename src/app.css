@@ -14,9 +14,7 @@ html, body, #app {
 /* Full-width layout by default */
 .container-max { @apply w-full px-4; }
 
-.card {
-  @apply bg-white dark:bg-ios-surface border border-gray-200 dark:border-ios-border rounded-xl shadow-sm;
-}
+.card { @apply bg-white dark:bg-md-surfaceDark border border-gray-200 dark:border-md-outline rounded-xl shadow-sm; }
 
 .badge {
   @apply inline-flex items-center gap-1 text-xs font-medium rounded-full px-2 py-0.5 border;
@@ -24,3 +22,13 @@ html, body, #app {
 
 /* Prefer system appearance */
 :root { color-scheme: light dark; }
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *:not([data-allow-motion="true"]) {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,4 +1,4 @@
-import { addDays } from './date';
+import { addDays, toISODate } from './date';
 
 // Compute Easter Sunday using Anonymous Gregorian algorithm
 function easterSunday(year: number): Date {
@@ -19,23 +19,15 @@ function easterSunday(year: number): Date {
   return new Date(year, month, day);
 }
 
-function iso(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
+function iso(d: Date): string { return toISODate(d); }
 
 function fixed(year: number, month: number, day: number) {
   return new Date(year, month, day);
 }
 
-// Buß- und Bettag: Wednesday before Nov 23
+// Buß- und Bettag: Wednesday before Nov 23 (between Nov 16–22)
 function repentanceDay(year: number): Date {
-  const reference = new Date(year, 10, 23); // Nov 23
-  // Go back to the previous Wednesday
-  const day = reference.getDay(); // 0=Sun..3=Wed..6=Sat
-  const diff = (day + 4) % 7 + 4; // ensure we go to Wednesday before Nov 23
-  const d = new Date(reference);
-  d.setDate(d.getDate() - diff);
-  // Sanity: ensure Wednesday
+  const d = new Date(year, 10, 22); // Nov 22
   while (d.getDay() !== 3) d.setDate(d.getDate() - 1);
   return d;
 }
@@ -58,9 +50,7 @@ export function holidaysForYear(year: number): Map<string, string> {
   ];
 
   const map = new Map<string, string>();
-  for (const h of list) {
-    map.set(h.date.toISOString().slice(0, 10), h.name);
-  }
+  for (const h of list) { map.set(toISODate(h.date), h.name); }
   return map;
 }
 
@@ -78,13 +68,13 @@ export function bridgeDaysForYear(year: number): Set<string> {
   const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
 
   for (const [isoDate] of holidays) {
-    const d = new Date(isoDate);
+    const d = dateFromISO(isoDate);
     const wd = d.getDay(); // 0=Sun..6=Sat
     // skip weekend holidays
     if (wd === 0 || wd === 6) continue;
 
     const maybeAdd = (x: Date) => {
-      const key = x.toISOString().slice(0, 10);
+      const key = toISODate(x);
       if (!withinYear(x)) return;
       if (isWeekend(x)) return;
       if (holidays.has(key)) return;
@@ -111,4 +101,34 @@ export function bridgeDaysForYear(year: number): Set<string> {
   }
 
   return bridges;
+}
+
+// Compute bridge days from an arbitrary holidays set
+export function bridgeDaysFromHolidays(year: number, holidays: Map<string, string>): Set<string> {
+  const bridges = new Set<string>();
+  const withinYear = (d: Date) => d.getFullYear() === year;
+  const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
+  const maybeAdd = (x: Date) => {
+    const key = toISODate(x);
+    if (!withinYear(x)) return;
+    if (isWeekend(x)) return;
+    if (holidays.has(key)) return;
+    bridges.add(key);
+  };
+  for (const [isoDate] of holidays) {
+    const d = dateFromISO(isoDate);
+    const wd = d.getDay();
+    if (wd === 0 || wd === 6) continue;
+    if (wd === 2) maybeAdd(addDays(d, -1));
+    else if (wd === 4) maybeAdd(addDays(d, 1));
+    else if (wd === 3) { maybeAdd(addDays(d, -1)); maybeAdd(addDays(d, 1)); }
+    else if (wd === 1) maybeAdd(addDays(d, -3));
+    else if (wd === 5) maybeAdd(addDays(d, 3));
+  }
+  return bridges;
+}
+
+function dateFromISO(iso: string): Date {
+  const [y, m, d] = iso.split('-').map((n) => parseInt(n, 10));
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
 }

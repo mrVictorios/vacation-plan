@@ -8,7 +8,7 @@
   export let bridgeDays: Readable<Set<string>>; // ISO date strings
 </script>
 
-<div class="grid h-full grid-cols-3 grid-rows-4 gap-2">
+<div class="grid h-full grid-cols-3 grid-rows-4 gap-2" role="grid" aria-label="Year calendar">
   {#each Array.from({ length: 12 }, (_, i) => i) as month}
     <MonthView {year} {month} {holidays} {bridgeDays} />
   {/each}
