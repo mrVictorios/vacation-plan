@@ -1,13 +1,14 @@
 # Vacation Planner — Saxony (DE)
 
-Plan vacations for the whole year with German public holidays, optional bridge days, and your own vacation allocation. The UI shows all 12 months at once (no scrolling), supports German/English, and follows a Material‑style light/dark theme.
+Plan vacations for the whole year with German public holidays, optional bridge days, school holidays, and your own vacation allocation. The UI supports German/English, follows a Material‑style light/dark theme, and shows all 12 months at once (with zoom + scroll if needed).
 
 ## Features
 - Full‑year calendar: 3×4 grid, Monday–Sunday, compact layout.
 - Saxony holidays (incl. Buß‑ und Bettag) + computed bridge days; select any German state (runtime fetch with fallback).
 - Manage vacation allocation: set total, select workdays (vacation shown in green), see remaining.
-- Automatic planning with preview variants: long breaks (≥7 days), even spread across the year, bridge‑day toggle, ignore months, optional school‑holiday preference.
+- Automatic planning with preview variants: long breaks (≥7 days), even spread across the year, bridge‑day toggle, ignore months, optional school‑holiday preference; one occurrence of max vacation weeks where possible.
 - School holidays highlighted in calendar and legend.
+- Share plans: export/import JSON and copy a shareable link with the plan embedded in the URL hash.
 - Dark mode (system‑driven), accessible focus states, high contrast.
 - Localization: DE/EN with a toggle; German date formats by default.
 - GitHub Pages deployment ready.
@@ -31,12 +32,19 @@ Plan vacations for the whole year with German public holidays, optional bridge d
 - Build: `npm run build` (outputs to `dist/`)
 - Preview build: `npm run preview`
 
+## CI
+- GitHub Actions runs unit tests and coverage on every push/PR (`.github/workflows/ci.yml`).
+
 ## Usage
 - Year selector (top right) changes the calendar year.
 - Locale switcher (DE/EN) and German region selector (Bundesland) next to the year selector.
-- Set your total vacation days; click workdays to toggle vacation (green).
+- Set your total vacation days; click workdays to toggle vacation (green). The calendar fully refreshes per year to reflect new holidays and school breaks.
 - Colors: green = vacation, red = holiday, amber = bridge day, gray = weekend, emerald tint = school holidays.
 - Automatic Planning: set parameters (bridge days on/off, max vacation/work weeks, even spread, ignore months, respect school holidays), generate multiple preview variants, and apply the plan.
+- Share: in the sidebar “Share plan” — export JSON, import from file/JSON, or copy a link. Opening a link with `#plan=...` will load the shared plan.
+- Density & Zoom: use the Compact/Comfort toggle and Zoom slider to fit the full year; the calendar pane scrolls if necessary.
+- Tabs: the sidebar groups Vacation, Auto Plan, and Share in tabs.
+- Persistence: UI/planner settings and state are saved to localStorage (density, zoom, planner parameters, selected year, region, vacation days, total days, locale).
 
 ## Deployment (GitHub Pages)
 - The app is configured with `base: '/vacation-plan/'` in `vite.config.ts`. If your repo name differs, update this value.

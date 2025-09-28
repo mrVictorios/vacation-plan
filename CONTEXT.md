@@ -13,8 +13,9 @@ This document captures the architecture, key decisions, and extension points to 
   - `components/Calendar.svelte`: 3×4 month grid.
   - `components/MonthView.svelte`: one month; weekday header + day grid.
   - `components/DayCell.svelte`: single day state + selection; visual states for holidays, bridge days, school holidays, weekends, vacation (green).
-  - `components/VacationManager.svelte`: allocation, remaining, selected list (table), prominent reset.
-  - `components/AutoPlan.svelte`: automatic planner with preview variants and parameters.
+  - `components/VacationManager.svelte`: allocation, remaining, selected list (table).
+  - `components/AutoPlan.svelte`: automatic planner with preview variants and parameters; one occurrence of max vacation weeks where possible.
+  - `components/SharePlan.svelte`: import/export JSON and shareable link generation; applies shared plans.
   - `components/LocaleSwitcher.svelte`: DE/EN toggle.
   - `components/RegionSelector.svelte`: German state selector.
   
@@ -24,7 +25,9 @@ This document captures the architecture, key decisions, and extension points to 
   - `stores/locale.ts`: UI locale with localStorage persistence.
   - `stores/region.ts`: selected German region.
   - `stores/holidays.ts`: holidays/bridge days derived from network fetch; loading/error state.
-  - `stores/autoPlanner.ts`: auto‑planning parameters (bridge toggle, max weeks, even spread, ignore months, school holidays).
+  - `stores/autoPlanner.ts`: auto‑planning parameters (bridge toggle, max weeks, even spread, ignore months, school holidays); persisted to localStorage.
+  - `stores/ui.ts`: density (compact/comfortable) and calendarScale (zoom); persisted to localStorage.
+  - Persistence summary: year, region, locale, density, zoom, auto‑planner settings, total vacation days and selected days are saved to localStorage.
 - Utilities
   - `lib/date.ts`: ISO formatting, month iteration, helpers.
   - `lib/holidays.ts`: Saxony holidays + bridge‑day rules; `bridgeDaysFromHolidays`.
@@ -41,12 +44,14 @@ This document captures the architecture, key decisions, and extension points to 
   - Bridge days computed from the active holidays map (Mon/Fri/Tue/Thu/Wed rules; skip weekends, same‑year only).
 - Layout:
   - 3×4 grid; compact typography; `auto-rows-fr` day grid for equal cell heights. Sidebar hidden below `lg` to keep no‑scroll guarantee.
-- Styling:
+  - Calendar is keyed by year (`{#key $currentYear}`) to force a full rerender when switching years.
+ - Styling:
   - Tailwind with Material‑inspired tokens and system‑driven dark mode; vacation = green for clear affordance.
 - Accessibility:
   - `focus-visible` rings, adequate contrast, ARIA roles for calendar grid/headers, descriptive localized `aria-label` per day; respects `prefers-reduced-motion`.
-- Localization:
+ - Localization:
   - Default `de-DE`; switcher to `en-US`. Dates via `Intl`.
+  - Month headers have extra padding for readability.
 
  
 
@@ -56,9 +61,9 @@ This document captures the architecture, key decisions, and extension points to 
 - Persistence:
   - Persist planner settings and preview; add schema versioning.
 - Export/Share:
-  - Generate CSV/ICS, or shareable URLs (e.g., compress ISO selections into hash params).
-- Density & Zoom:
-  - Provide compact/comfortable density toggle; breakpoints for 2×6 or 1×12 views.
+  - Export/import JSON. Generate shareable URLs with base64url‑encoded payload in the hash; load on startup if present.
+ - Density & Zoom:
+  - Compact/Comfort density toggle; zoom slider scales the calendar; the calendar pane scrolls if necessary.
 - Tests/CI:
   - Add component and E2E tests (Playwright); integrate into GitHub Actions.
 
@@ -70,14 +75,15 @@ This document captures the architecture, key decisions, and extension points to 
   - `tests/holidays_fetch.test.ts` — network fallback behavior.
   - `tests/i18n.test.ts` — i18n helpers.
   - `tests/auto_planner*.test.ts` — planner behavior (long breaks, ignore months, bridge toggle, school holidays, greedy fill).
-- Coverage: `npm run test:coverage` (v8). Thresholds ≥60% lines/statements/functions, 50% branches on `src/lib/**`.
+ - Coverage: `npm run test:coverage` (v8). Thresholds ≥60% lines/statements/functions, 50% branches on `src/lib/**`.
+ - CI: `.github/workflows/ci.yml` runs unit tests and uploads coverage artifacts on push/PR.
 
 ## Coding Guidelines
 - SRP: each component handles one concern; keep logic in `lib/*` or stores.
 - Types: prefer explicit types for store values and function returns.
 - Naming: kebab‑case files; PascalCase Svelte components; `*.types.ts` for shared types.
-- Styling: use Tailwind utility classes; centralize tokens in config or `app.css`.
-- Conditionals: avoid “elvis”/ternary (`a ? b : c`) and nullish coalescing (`??`) in TS; prefer explicit `if` statements for readability. In Svelte templates, favor `{#if}{:else}` blocks over inline ternaries.
+ - Styling: use Tailwind utility classes; centralize tokens in config or `app.css`.
+ - Conditionals: avoid “elvis”/ternary (`a ? b : c`) and nullish coalescing (`??`) in TS; prefer explicit `if` statements for readability. In Svelte templates, favor `{#if}{:else}` blocks over inline ternaries. Compute complex class strings/handlers in the script block.
 
 ## Known Trade‑offs
 - Bridge day rules are heuristic; may need regional/company overrides.

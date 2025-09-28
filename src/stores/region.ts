@@ -24,5 +24,15 @@ export const germanRegions: { code: GermanRegion; name: string }[] = [
 ];
 
 // Default to Saxony
-export const region = writable<GermanRegion>('SN');
+function safeGet(key: string): string | null { try { return localStorage.getItem(key); } catch { return null; } }
+function safeSet(key: string, value: string) { try { localStorage.setItem(key, value); } catch {} }
 
+const initialRegion = (() => {
+  const v = safeGet('ui:region');
+  const codes = new Set(germanRegions.map((r) => r.code));
+  if (v && codes.has(v as GermanRegion)) return v as GermanRegion;
+  return 'SN';
+})();
+
+export const region = writable<GermanRegion>(initialRegion);
+region.subscribe((v) => safeSet('ui:region', v));
