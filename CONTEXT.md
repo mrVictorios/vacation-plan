@@ -33,8 +33,9 @@ This document captures the architecture, key decisions, and extension points to 
   - `lib/holidays.ts`: Saxony holidays + bridge‑day rules; `bridgeDaysFromHolidays`.
   - `lib/holidays_fetch.ts`: fetch regional holidays with memory + localStorage cache and fallbacks.
   - `lib/i18n.ts`: month/weekday names, date formatting.
-  - `lib/auto_planner.ts`: anchor‑first long‑break planner with variants, even spread, ignore months, bridge‑day toggle, one max‑week occurrence, greedy fill.
-  - `lib/school_holidays.ts`: placeholder provider for school holiday periods per region.
+  - `lib/auto_planner.ts`: anchor‑first long‑break planner with variants (deterministic seed), even spread, ignore months, bridge‑day toggle, one max‑week occurrence, greedy fill.
+  - `lib/school_holidays.ts`: placeholder provider for school holiday periods per region; memoized day‑set helper.
+  - `lib/constants.ts`: central constants for scoring, zoom bounds, UI defaults.
   
 
 ## Key Decisions
@@ -43,7 +44,7 @@ This document captures the architecture, key decisions, and extension points to 
   - Robust fallbacks: Saxony built‑in or national common holidays if network fails.
   - Bridge days computed from the active holidays map (Mon/Fri/Tue/Thu/Wed rules; skip weekends, same‑year only).
 - Layout:
-  - 3×4 grid; compact typography; `auto-rows-fr` day grid for equal cell heights. Sidebar hidden below `lg` to keep no‑scroll guarantee.
+  - Responsive months grid: 1 column (mobile), 2 (small screens), 3 (desktop). Compact typography.
   - Calendar is keyed by year (`{#key $currentYear}`) to force a full rerender when switching years.
  - Styling:
   - Tailwind with Material‑inspired tokens and system‑driven dark mode; vacation = green for clear affordance.
@@ -60,8 +61,8 @@ This document captures the architecture, key decisions, and extension points to 
   - Add service adapters or local calculators; support additional countries.
 - Persistence:
   - Persist planner settings and preview; add schema versioning.
-- Export/Share:
-  - Export/import JSON. Generate shareable URLs with base64url‑encoded payload in the hash; load on startup if present.
+ - Export/Share:
+  - Export/import JSON. Generate shareable URLs with LZ‑string compressed payload and compact runs encoding for selected dates; load on startup if present.
  - Density & Zoom:
   - Compact/Comfort density toggle; zoom slider scales the calendar; the calendar pane scrolls if necessary.
 - Tests/CI:

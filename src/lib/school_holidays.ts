@@ -21,3 +21,24 @@ export function getSchoolHolidays(year: number, region: string): SchoolHoliday[]
   return [];
 }
 
+// Memoized helper to get a Set of ISO dates for school holidays
+const schoolDaysCache = new Map<string, Set<string>>();
+export function getSchoolDaysSet(year: number, region: string): Set<string> {
+  const key = `${year}-${region}`;
+  const cached = schoolDaysCache.get(key);
+  if (cached) return cached;
+  const ranges = getSchoolHolidays(year, region);
+  const set = new Set<string>();
+  for (const range of ranges) {
+    const current = new Date(range.start);
+    while (current <= range.end) {
+      const y = current.getFullYear();
+      const m = String(current.getMonth() + 1).padStart(2, '0');
+      const d = String(current.getDate()).padStart(2, '0');
+      set.add(`${y}-${m}-${d}`);
+      current.setDate(current.getDate() + 1);
+    }
+  }
+  schoolDaysCache.set(key, set);
+  return set;
+}

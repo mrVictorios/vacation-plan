@@ -33,7 +33,7 @@
       },
       schoolHolidays: school,
     };
-    variants = generateAutoPlanVariants(input, 5);
+    variants = generateAutoPlanVariants(input, 5, Date.now());
     variantIndex = 0;
     if (variants.length > 0) {
       preview = variants[0];
@@ -92,6 +92,10 @@
     <label class="flex items-center justify-between gap-2">
       <span class="text-zinc-700 dark:text-zinc-300">{ $locale === 'de-DE' ? 'max. Arbeitswochen in Folge' : 'Max work weeks in a row' }</span>
       <input type="number" min="1" class="w-20 border border-zinc-300 dark:border-md-outline rounded px-2 py-1 bg-white dark:bg-md-surfaceDark" bind:value={$autoPlannerSettings.maxConsecutiveWorkWeeks}>
+    </label>
+    <label class="flex items-center justify-between gap-2">
+      <span class="text-zinc-700 dark:text-zinc-300">{ $locale === 'de-DE' ? 'min. Urlaubstage am Stück' : 'Min break days' }</span>
+      <input type="number" min="1" class="w-20 border border-zinc-300 dark:border-md-outline rounded px-2 py-1 bg-white dark:bg-md-surfaceDark" bind:value={$autoPlannerSettings.minBreakDays}>
     </label>
     <label class="col-span-2 inline-flex items-center gap-2">
       <input type="checkbox" bind:checked={$autoPlannerSettings.replaceExisting} class="accent-md-primary">

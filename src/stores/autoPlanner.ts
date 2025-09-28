@@ -8,6 +8,7 @@ export type AutoPlannerSettings = {
   preferEvenSpread: boolean;
   respectSchoolHolidays: boolean;
   ignoredMonths: number[]; // 0-11 months to exclude from planning
+  minBreakDays: number; // minimum contiguous off-days (default 7)
 };
 
 const defaults: AutoPlannerSettings = {
@@ -18,6 +19,7 @@ const defaults: AutoPlannerSettings = {
   preferEvenSpread: true,
   respectSchoolHolidays: false,
   ignoredMonths: [],
+  minBreakDays: 7,
 };
 
 function safeGet(key: string): string | null { try { return localStorage.getItem(key); } catch { return null; } }
@@ -36,6 +38,7 @@ function loadInitial(): AutoPlannerSettings {
       preferEvenSpread: typeof obj.preferEvenSpread === 'boolean' ? obj.preferEvenSpread : defaults.preferEvenSpread,
       respectSchoolHolidays: typeof obj.respectSchoolHolidays === 'boolean' ? obj.respectSchoolHolidays : defaults.respectSchoolHolidays,
       ignoredMonths: Array.isArray(obj.ignoredMonths) ? (obj.ignoredMonths as number[]).filter((m) => Number.isInteger(m) && m >= 0 && m <= 11) : defaults.ignoredMonths,
+      minBreakDays: Number.isFinite(obj.minBreakDays as number) ? Math.max(1, Math.floor(obj.minBreakDays as number)) : defaults.minBreakDays,
     };
     return s;
   } catch {

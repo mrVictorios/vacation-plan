@@ -3,6 +3,7 @@
   import { region } from '../stores/region';
   import { totalDays, vacationDays } from '../stores/vacation';
   import { locale } from '../stores/locale';
+  import LZString from 'lz-string';
 
   type PlanBundle = {
     year: number;
@@ -20,6 +21,43 @@
       selected: Array.from($vacationDays).sort(),
       schema: 1,
     };
+  }
+
+  // Compact runs encoding: convert selected dates (ISO) into day offsets from Jan 1, then RLE runs
+  function toDayIndex(iso: string): number {
+    const d = new Date(iso);
+    const start = new Date($currentYear, 0, 1);
+    return Math.floor((d.getTime() - start.getTime()) / 86400000);
+  }
+
+  function buildRuns(dates: string[]): number[][] {
+    const idx = dates.map(toDayIndex).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
+    const runs: number[][] = [];
+    let i = 0;
+    while (i < idx.length) {
+      const start = idx[i];
+      let len = 1;
+      let j = i + 1;
+      while (j < idx.length && idx[j] === idx[j - 1] + 1) { len++; j++; }
+      runs.push([start, len]);
+      i = j;
+    }
+    return runs;
+  }
+
+  function runsToDates(year: number, runs: number[][]): string[] {
+    const out: string[] = [];
+    for (const [start, len] of runs) {
+      for (let k = 0; k < len; k++) {
+        const d = new Date(year, 0, 1);
+        d.setDate(d.getDate() + start + k);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        out.push(`${y}-${m}-${day}`);
+      }
+    }
+    return out;
   }
 
   function downloadJSON() {
@@ -57,7 +95,11 @@
 
   function copyLink() {
     const data = makeBundle();
-    const payload = toBase64Url(JSON.stringify(data));
+    // Compact payload using runs
+    const runs = buildRuns(data.selected);
+    const compact = { y: data.year, rg: data.region, td: data.totalDays, r: runs, s: 2 };
+    const json = JSON.stringify(compact);
+    const payload = 'z:' + LZString.compressToEncodedURIComponent(json);
     const base = window.location.origin + window.location.pathname;
     const link = base + '#plan=' + payload;
     void navigator.clipboard.writeText(link);
@@ -110,9 +152,27 @@
     const m = hash.match(/plan=([^&]+)/);
     if (!m) return;
     try {
-      const json = fromBase64Url(m[1]);
-      const obj = JSON.parse(json) as PlanBundle;
-      applyBundle(obj);
+      const raw = m[1];
+      if (!raw.startsWith('z:')) {
+        importError = 'Unsupported link format';
+        return;
+      }
+      const compressed = raw.slice(2);
+      const json = LZString.decompressFromEncodedURIComponent(compressed) || '';
+      const obj = JSON.parse(json) as any;
+      // Support compact and full schemas
+      if (obj && typeof obj === 'object' && Array.isArray(obj.r) && typeof obj.y === 'number') {
+        const selected = runsToDates(obj.y, obj.r as number[][]);
+        applyBundle({
+          year: obj.y,
+          region: obj.rg || $region,
+          totalDays: obj.td || $totalDays,
+          selected,
+          schema: obj.s || 2,
+        });
+      } else {
+        applyBundle(obj as PlanBundle);
+      }
     } catch (e) {
       importError = 'Failed to parse plan from link';
     }
@@ -152,4 +212,3 @@
     </div>
   </div>
 </div>
-

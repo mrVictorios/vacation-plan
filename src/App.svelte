@@ -11,14 +11,16 @@
   import RegionSelector from './components/RegionSelector.svelte';
   import { region } from './stores/region';
   import { holidaysStore, bridgeDaysStore, loadHolidays, loadingHolidays, holidaysError } from './stores/holidays';
-  import { vacationDays } from './stores/vacation';
+  import { vacationDays, totalDays } from './stores/vacation';
   import AutoPlan from './components/AutoPlan.svelte';
-  import { getSchoolHolidays } from './lib/school_holidays';
+  import { getSchoolHolidays, getSchoolDaysSet } from './lib/school_holidays';
   import { toISODate } from './lib/date';
   import SharePlan from './components/SharePlan.svelte';
   import { density, calendarScale } from './stores/ui';
+  import { buildSharePayload } from './lib/share';
+  import { ZOOM_MIN, ZOOM_MAX } from './lib/constants';
   
-  let activeTab: 'vacation' | 'auto' | 'share' = 'vacation';
+  import { activeSidebarTab } from './stores/ui';
   
   // UI helpers for density toggle
   $: compactActive = $density === 'compact';
@@ -29,9 +31,9 @@
   function onScaleInput(e: Event) {
     const t = e.target as HTMLInputElement | null;
     if (!t) return;
-    const v = Number(t.value);
-    if (!Number.isNaN(v)) {
-      const clamped = Math.max(0.5, Math.min(2, v / 100));
+    const numericValue = Number(t.value);
+    if (!Number.isNaN(numericValue)) {
+      const clamped = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, numericValue / 100));
       calendarScale.set(clamped);
     }
   }
@@ -50,19 +52,25 @@
   const holidays = holidaysStore;
   const bridgeDays = bridgeDaysStore;
 
-  // Derive school holiday dates for highlight
+  // Derive school holiday dates for highlight (memoized)
   const schoolDays = derived([currentYear, region], ([$yearValue, $regionCode]) => {
-    const holidayRanges = getSchoolHolidays($yearValue, $regionCode);
-    const datesSet = new Set<string>();
-    for (const range of holidayRanges) {
-      const currentDate = new Date(range.start);
-      while (currentDate <= range.end) {
-        datesSet.add(toISODate(currentDate));
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-    }
-    return datesSet;
+    return getSchoolHolidays($yearValue, $regionCode).length
+      ? getSchoolDaysSet($yearValue, $regionCode)
+      : new Set<string>();
   });
+
+  // Update URL with shareable link on state changes
+  $: (function updateShareUrl() {
+    if (typeof window === 'undefined') return;
+    const selected = Array.from($vacationDays).sort();
+    const payload = buildSharePayload($currentYear, $region, $totalDays, selected);
+    const base = window.location.origin + window.location.pathname;
+    const newHash = 'plan=' + payload;
+    const currentHash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+    if (currentHash !== newHash) {
+      history.replaceState(null, '', base + '#' + newHash);
+    }
+  })();
 </script>
 
 <main class="w-full h-full min-h-full p-3 md:p-4 flex flex-col gap-3">
@@ -131,28 +139,28 @@
           <div class="flex w-full items-center gap-1 border-b border-zinc-200 dark:border-md-outline" role="tablist" aria-label="Planner tabs">
             <button
               role="tab"
-              aria-selected={activeTab === 'vacation'}
-              class={`flex-1 text-center px-3 py-2 text-sm rounded-t ${activeTab === 'vacation' ? 'text-md-onPrimary bg-green-600 text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
-              on:click={() => activeTab = 'vacation'}
+              aria-selected={$activeSidebarTab === 'vacation'}
+              class={`flex-1 text-center px-3 py-2 text-sm rounded-t ${$activeSidebarTab === 'vacation' ? 'text-md-onPrimary bg-green-600 text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+              on:click={() => activeSidebarTab.set('vacation')}
             >{ $locale === 'de-DE' ? 'Urlaub' : 'Vacation' }</button>
             <button
               role="tab"
-              aria-selected={activeTab === 'auto'}
-              class={`flex-1 text-center px-3 py-2 text-sm rounded-t ${activeTab === 'auto' ? 'text-md-onPrimary bg-zinc-900 text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
-              on:click={() => activeTab = 'auto'}
+              aria-selected={$activeSidebarTab === 'auto'}
+              class={`flex-1 text-center px-3 py-2 text-sm rounded-t ${$activeSidebarTab === 'auto' ? 'text-md-onPrimary bg-zinc-900 text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+              on:click={() => activeSidebarTab.set('auto')}
             >{ $locale === 'de-DE' ? 'Auto-Plan' : 'Auto Plan' }</button>
             <button
               role="tab"
-              aria-selected={activeTab === 'share'}
-              class={`flex-1 text-center px-3 py-2 text-sm rounded-t ${activeTab === 'share' ? 'text-md-onPrimary bg-zinc-900 text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
-              on:click={() => activeTab = 'share'}
+              aria-selected={$activeSidebarTab === 'share'}
+              class={`flex-1 text-center px-3 py-2 text-sm rounded-t ${$activeSidebarTab === 'share' ? 'text-md-onPrimary bg-zinc-900 text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+              on:click={() => activeSidebarTab.set('share')}
             >{ $locale === 'de-DE' ? 'Teilen' : 'Share' }</button>
           </div>
         </div>
         <div class="p-3 md:p-4 flex-1 min-h-0 overflow-auto">
-          {#if activeTab === 'vacation'}
+          {#if $activeSidebarTab === 'vacation'}
             <VacationManager />
-          {:else if activeTab === 'auto'}
+          {:else if $activeSidebarTab === 'auto'}
             <AutoPlan />
           {:else}
             <SharePlan />

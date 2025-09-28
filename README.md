@@ -8,7 +8,8 @@ Plan vacations for the whole year with German public holidays, optional bridge d
 - Manage vacation allocation: set total, select workdays (vacation shown in green), see remaining.
 - Automatic planning with preview variants: long breaks (≥7 days), even spread across the year, bridge‑day toggle, ignore months, optional school‑holiday preference; one occurrence of max vacation weeks where possible.
 - School holidays highlighted in calendar and legend.
-- Share plans: export/import JSON and copy a shareable link with the plan embedded in the URL hash.
+- Share plans: export/import JSON and copy a shareable link with the plan embedded in the URL hash (LZ‑string compressed).
+ - Responsive layout: 1 month per row on mobile, 2 on small screens, 3 on desktop; zoom + scroll when needed.
 - Dark mode (system‑driven), accessible focus states, high contrast.
 - Localization: DE/EN with a toggle; German date formats by default.
 - GitHub Pages deployment ready.
@@ -34,6 +35,7 @@ Plan vacations for the whole year with German public holidays, optional bridge d
 
 ## CI
 - GitHub Actions runs unit tests and coverage on every push/PR (`.github/workflows/ci.yml`).
+ - Lint job runs ESLint (`npm run lint`).
 
 ## Usage
 - Year selector (top right) changes the calendar year.
@@ -55,10 +57,12 @@ Plan vacations for the whole year with German public holidays, optional bridge d
 - Region/holidays: at runtime, holidays are fetched from feiertage-api.de for the selected state. If network fails, the app falls back to built‑in rules (Saxony or national common holidays). To change logic, see `src/lib/holidays_fetch.ts` and `src/lib/holidays.ts`.
 - Density/layout: adjust sizing in `MonthView.svelte` and `DayCell.svelte`.
 - Color theme: tune Tailwind tokens in `tailwind.config.cjs` and styles in `src/app.css` (Material‑inspired, system dark mode).
+ - Planner constants: tweak scoring and UI limits in `src/lib/constants.ts` (e.g., min break days, min gap, zoom bounds, bridge/weekend weights).
 
 ## Testing & Coverage
 - Run unit tests: `npm run test` (watch) or `npm run test:run`
 - Coverage: `npm run test:coverage` (HTML in `coverage/`); thresholds: ≥60% for statements/functions/lines (branches 50%).
+ - Planner variants use a deterministic jitter when a seed is provided (the UI passes `Date.now()` for diversity; tests can pass a fixed seed).
 
 ## Accessibility
 - Keyboard focus rings and adequate contrast for dark/light themes.

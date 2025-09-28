@@ -1,4 +1,5 @@
 import { toISODate, isWeekend } from './date';
+import { MIN_BREAK_DAYS_DEFAULT, MIN_GAP_DAYS_DEFAULT, WEEKEND_EXTENSION_BONUS, BRIDGE_DAY_WEIGHT, SEASON_SUMMER_BONUS, SEASON_WINTER_BONUS } from './constants';
 
 export type AutoPlannerSettings = {
   useBridgeDays: boolean;
@@ -106,7 +107,7 @@ export function generateAutoPlanDetailed(input: AutoPlanInput): AutoPlanResult {
 }
 
 // Produce multiple variants by jittering window scores slightly and reselecting.
-export function generateAutoPlanVariants(input: AutoPlanInput, count = 5): AutoPlanResult[] {
+export function generateAutoPlanVariants(input: AutoPlanInput, count = 5, seed?: number): AutoPlanResult[] {
   const { year, holidays, bridgeDays, budget, settings } = input;
   const start = new Date(year, 0, 1);
   const end = new Date(year, 11, 31);
@@ -126,9 +127,16 @@ export function generateAutoPlanVariants(input: AutoPlanInput, count = 5): AutoP
   const baseWindows = enumerateWindows(days, settings, bridges, excludeBridgeDays);
 
   const variants: AutoPlanResult[] = [];
+  // Deterministic RNG for jittering if seed provided
+  let randState = (typeof seed === 'number' ? Math.floor(seed) : Date.now()) >>> 0;
+  const nextRand = () => {
+    // LCG parameters (Numerical Recipes):
+    randState = (1664525 * randState + 1013904223) >>> 0;
+    return randState / 0xffffffff;
+  };
   for (let i = 0; i < count; i++) {
-    // Jitter window scores by up to ±10%
-    const jittered = baseWindows.map(w => ({ ...w, score: w.score * (0.9 + Math.random() * 0.2) }));
+    // Jitter window scores by up to ±10% (deterministic if seed given)
+    const jittered = baseWindows.map(w => ({ ...w, score: w.score * (0.9 + (nextRand()) * 0.2) }));
     // Optionally flip even-spread preference for some variants to diversify
     let preferEven: boolean;
     if (settings.preferEvenSpread !== false) {
@@ -193,9 +201,9 @@ function enumerateWindows(
   bridgeDaysForScore: Set<string>,
   excludeBridgeDays: Set<string>
 ): Window[] {
-  const maxLen = settings.maxConsecutiveVacationWeeks * 7 + 2; // allow small spill over weekends
-  const minLen = 7; // prefer long-term vacations (>= 7 contiguous days off)
-  const ignored = new Set<number>(settings.ignoredMonths ?? []);
+  const maxLen = plannerSettings.maxConsecutiveVacationWeeks * 7 + 2; // allow small spill over weekends
+  const minLen = Math.max(1, plannerSettings.minBreakDays || MIN_BREAK_DAYS_DEFAULT);
+  const ignored = new Set<number>(plannerSettings.ignoredMonths ?? []);
   const res: Window[] = [];
   for (let startIndex = 0; startIndex < allDays.length; startIndex++) {
     for (let windowLength = minLen; windowLength <= maxLen && startIndex + windowLength <= allDays.length; windowLength++) {
@@ -208,12 +216,12 @@ function enumerateWindows(
       // weekend extension preference
       const startDow = slice[0].date.getDay();
       const endDow = slice[slice.length - 1].date.getDay();
-      if (startDow === 1) score += 0.4; // Monday start
-      if (endDow === 5) score += 0.4; // Friday end
+      if (startDow === 1) score += WEEKEND_EXTENSION_BONUS; // Monday start
+      if (endDow === 5) score += WEEKEND_EXTENSION_BONUS; // Friday end
       // bridge day usage
       if (bridgeDaysForScore.size > 0) {
-        const bcount = slice.reduce((a, d) => a + (bridgeDaysForScore.has(d.iso) ? 1 : 0), 0);
-        score += bcount * 0.8;
+        const bridgeCount = slice.reduce((acc, candidate) => acc + (bridgeDaysForScore.has(candidate.iso) ? 1 : 0), 0);
+        score += bridgeCount * BRIDGE_DAY_WEIGHT;
       }
       // month balance: moderate bonus for spring/summer/autumn over clustering in one season
       const midDate = slice[Math.floor(slice.length / 2)].date;
@@ -255,8 +263,8 @@ function enumerateWindows(
 
 function seasonWeight(month: number): number {
   // Encourage spread: slight preference for May–Sep windows, but not mandatory
-  if (month >= 4 && month <= 8) return 0.4; // late spring/summer
-  if (month === 11 || month <= 1) return 0.1; // deep winter small boost for short breaks
+  if (month >= 4 && month <= 8) return SEASON_SUMMER_BONUS; // late spring/summer
+  if (month === 11 || month <= 1) return SEASON_WINTER_BONUS; // deep winter small boost for short breaks
   return 0.2; // neutral seasons
 }
 
@@ -269,7 +277,7 @@ function selectWindows(
   const pickedDates = new Set<string>();
   const chosenRanges: { start: number; end: number }[] = [...presetRanges];
   let remaining = remainingBudget;
-  const minGap = 21; // ~3 weeks gap between breaks to avoid clustering
+  const minGap = MIN_GAP_DAYS_DEFAULT; // min gap between breaks
 
   // If even spread preferred, first pick one high-value window per quarter when possible
   if (plannerSettings.preferEvenSpread) {
@@ -436,12 +444,12 @@ function pickAnchors(allDays: DayInfo[], allWindows: Window[], remainingBudget: 
     return false;
   };
 
-  if (settings.respectSchoolHolidays && schoolHolidays.length > 0) {
+  if (plannerSettings.respectSchoolHolidays && schoolHolidays.length > 0) {
     // Choose window with largest overlap with any school holiday period first
     const scored = allWindows.map(win => {
       const overlap = overlapWithSchoolHoliday(win, allDays, schoolHolidays);
       return { win, overlap };
-    }).filter(x => x.overlap > 0).sort((a, b) => b.overlap - a.overlap || b.w.score - a.w.score);
+    }).filter(x => x.overlap > 0).sort((a, b) => b.overlap - a.overlap || b.win.score - a.win.score);
     for (const { win } of scored) {
       if (remaining <= 0) break;
       if (win.needed > remaining) continue;

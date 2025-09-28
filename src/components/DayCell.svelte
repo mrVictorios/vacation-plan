@@ -17,6 +17,7 @@
   $: isBridge = $bridgeDays.has(iso);
   $: isSchool = $schoolDays ? $schoolDays.has(iso) : false;
   $: isSelected = $vacationDays.has(iso);
+  $: isToday = iso === toISODate(new Date());
 
   // Responsive density classes
   $: sizeClasses = $density === 'compact'
@@ -61,7 +62,7 @@
 </script>
 
 <button
-  class={`relative h-full flex flex-col items-center justify-center border rounded-lg transition-colors select-none touch-manipulation text-center overflow-hidden font-medium ${sizeClasses} ${stateClasses}`}
+  class={`relative h-full flex flex-col items-center justify-center border rounded-lg transition-colors select-none touch-manipulation text-center overflow-hidden font-medium ${sizeClasses} ${stateClasses} ${isToday ? 'ring-1 ring-blue-400' : ''}`}
     focus:outline-none focus-visible:ring-2 focus-visible:ring-md-primary focus-visible:ring-offset-1 focus-visible:ring-offset-transparent
     disabled:opacity-60 disabled:cursor-not-allowed
   on:click={onClick}

@@ -7,15 +7,17 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "echo 'add eslint if desired'",
+    "lint": "eslint . --ext .ts,.svelte",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "svelte": "^4.2.18"
+    "svelte": "^4.2.18",
+    "lz-string": "^1.5.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.47.1",
     "@sveltejs/vite-plugin-svelte": "^3.1.2",
     "@tsconfig/svelte": "^5.0.4",
     "@vitest/coverage-v8": "^2.1.9",
