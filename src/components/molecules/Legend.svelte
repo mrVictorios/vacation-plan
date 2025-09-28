@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { locale } from '../stores/locale';
+  import { locale } from '../../stores/locale';
   const t = {
     holiday: { de: 'Feiertag', en: 'Public holiday' },
     bridge: { de: 'Brückentag', en: 'Bridge day' },

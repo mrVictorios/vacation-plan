@@ -1,21 +1,21 @@
 <script lang="ts">
   // Root app: composes controls + year calendar
   import { currentYear } from './stores/year';
-  import VacationManager from './components/VacationManager.svelte';
+  import VacationManager from './components/organisms/VacationManager.svelte';
   
-  import Calendar from './components/Calendar.svelte';
-  import Legend from './components/Legend.svelte';
+  import Calendar from './components/organisms/Calendar.svelte';
+  import Legend from './components/molecules/Legend.svelte';
   import { derived } from 'svelte/store';
   import { locale } from './stores/locale';
-  import LocaleSwitcher from './components/LocaleSwitcher.svelte';
-  import RegionSelector from './components/RegionSelector.svelte';
+  import LocaleSwitcher from './components/molecules/LocaleSwitcher.svelte';
+  import RegionSelector from './components/molecules/RegionSelector.svelte';
   import { region } from './stores/region';
   import { holidaysStore, bridgeDaysStore, loadHolidays, loadingHolidays, holidaysError } from './stores/holidays';
   import { vacationDays, totalDays } from './stores/vacation';
-  import AutoPlan from './components/AutoPlan.svelte';
+  import AutoPlan from './components/organisms/AutoPlan.svelte';
   import { getSchoolHolidays, getSchoolDaysSet } from './lib/school_holidays';
   import { toISODate } from './lib/date';
-  import SharePlan from './components/SharePlan.svelte';
+  import SharePlan from './components/organisms/SharePlan.svelte';
   import { density, calendarScale } from './stores/ui';
   import { buildSharePayload, importPlanFromHashAndApply } from './lib/share';
   import { onMount } from 'svelte';

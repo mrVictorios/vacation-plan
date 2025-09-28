@@ -1,10 +1,10 @@
 <script lang="ts">
-  import DayCell from './DayCell.svelte';
-  import { daysInMonth } from '../lib/date';
+  import DayCell from '../atoms/DayCell.svelte';
+  import { daysInMonth } from '../../lib/date';
   import type { Readable } from 'svelte/store';
-  import { density } from '../stores/ui';
-  import { locale } from '../stores/locale';
-  import { weekdayShortNames, monthLongName } from '../lib/i18n';
+  import { density } from '../../stores/ui';
+  import { locale } from '../../stores/locale';
+  import { weekdayShortNames, monthLongName } from '../../lib/i18n';
 
   export let year: number;
   export let month: number; // 0-11

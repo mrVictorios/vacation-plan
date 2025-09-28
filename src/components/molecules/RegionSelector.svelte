@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { region, germanRegions } from '../stores/region';
-  import { locale } from '../stores/locale';
+  import { region, germanRegions } from '../../stores/region';
+  import { locale } from '../../stores/locale';
 </script>
 
 <label class="flex items-center gap-2">

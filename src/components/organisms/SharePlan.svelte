@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { currentYear } from '../stores/year';
-  import { region } from '../stores/region';
-  import { totalDays, vacationDays } from '../stores/vacation';
-  import { locale } from '../stores/locale';
+  import { currentYear } from '../../stores/year';
+  import { region } from '../../stores/region';
+  import { totalDays, vacationDays } from '../../stores/vacation';
+  import { locale } from '../../stores/locale';
   import LZString from 'lz-string';
-  import { importPlanFromHashAndApply, runsToDates } from '../lib/share';
+  import { importPlanFromHashAndApply, runsToDates } from '../../lib/share';
 
   type PlanBundle = {
     year: number;

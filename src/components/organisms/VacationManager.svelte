@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { totalDays, remainingDays, vacationDays, clearAll } from '../stores/vacation';
-  import { currentYear } from '../stores/year';
-  import { locale } from '../stores/locale';
+  import { totalDays, remainingDays, vacationDays, clearAll } from '../../stores/vacation';
+  import { currentYear } from '../../stores/year';
+  import { locale } from '../../stores/locale';
 
   function onInput(e: Event) {
     const v = Number((e.target as HTMLInputElement).value ?? 0);

@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { currentYear } from '../stores/year';
-  import { locale } from '../stores/locale';
-  import { autoPlannerSettings } from '../stores/autoPlanner';
-  import { holidaysStore, bridgeDaysStore } from '../stores/holidays';
-  import { remainingDays, totalDays, vacationDays } from '../stores/vacation';
-  import { generateAutoPlanDetailed, generateAutoPlanVariants, type AutoPlanResult } from '../lib/auto_planner';
-  import { region } from '../stores/region';
-  import { getSchoolHolidays } from '../lib/school_holidays';
+  import { currentYear } from '../../stores/year';
+  import { locale } from '../../stores/locale';
+  import { autoPlannerSettings } from '../../stores/autoPlanner';
+  import { holidaysStore, bridgeDaysStore } from '../../stores/holidays';
+  import { remainingDays, totalDays, vacationDays } from '../../stores/vacation';
+  import { generateAutoPlanDetailed, generateAutoPlanVariants, type AutoPlanResult } from '../../lib/auto_planner';
+  import { region } from '../../stores/region';
+  import { getSchoolHolidays } from '../../lib/school_holidays';
 
   let preview: AutoPlanResult | null = null;
   let variants: AutoPlanResult[] = [];

@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { Readable } from 'svelte/store';
-  import { isWeekend, toISODate } from '../lib/date';
-  import { locale } from '../stores/locale';
-  import { vacationDays, toggleVacation, remainingDays } from '../stores/vacation';
-  import { density } from '../stores/ui';
+  import { isWeekend, toISODate } from '../../lib/date';
+  import { locale } from '../../stores/locale';
+  import { vacationDays, toggleVacation, remainingDays } from '../../stores/vacation';
+  import { density } from '../../stores/ui';
 
   export let date: Date;
   export let holidays: Readable<Map<string, string>>;
