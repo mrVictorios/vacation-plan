@@ -1,0 +1,39 @@
+# Node / Vite
+node_modules/
+dist/
+.vite/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.idea/
+.history/
+.vscode/
+.vscode-test/
+.fleet/
+
+# Editors (temporary files)
+*~
+*.swp
+*.swo
+
+# Tests/Coverage
+coverage/
+.nyc_output/
+
+# Env files (keep templates like .env.example)
+.env
+.env.local
+.env.*.local
+
+# Build caches
+.cache/
