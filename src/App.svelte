@@ -17,7 +17,8 @@
   import { toISODate } from './lib/date';
   import SharePlan from './components/SharePlan.svelte';
   import { density, calendarScale } from './stores/ui';
-  import { buildSharePayload } from './lib/share';
+  import { buildSharePayload, importPlanFromHashAndApply } from './lib/share';
+  import { onMount } from 'svelte';
   import { ZOOM_MIN, ZOOM_MAX } from './lib/constants';
   
   import { activeSidebarTab } from './stores/ui';
@@ -59,9 +60,25 @@
       : new Set<string>();
   });
 
+  // Avoid overwriting an incoming share link before we import it
+  let suppressShareUrlUpdate = true;
+
+  onMount(() => {
+    if (typeof window !== 'undefined') {
+      // Try to import shared plan once on load
+      importPlanFromHashAndApply(window.location.hash);
+      // Listen for future hash changes (e.g., user pastes a link later)
+      const onHash = () => { importPlanFromHashAndApply(window.location.hash); };
+      window.addEventListener('hashchange', onHash);
+      // Re-enable share URL updates after initial import attempt
+      queueMicrotask(() => { suppressShareUrlUpdate = false; });
+      return () => window.removeEventListener('hashchange', onHash);
+    }
+  });
+
   // Update URL with shareable link on state changes
   $: (function updateShareUrl() {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || suppressShareUrlUpdate) return;
     const selected = Array.from($vacationDays).sort();
     const payload = buildSharePayload($currentYear, $region, $totalDays, selected);
     const base = window.location.origin + window.location.pathname;

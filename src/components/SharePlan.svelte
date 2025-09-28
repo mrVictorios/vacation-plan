@@ -4,6 +4,7 @@
   import { totalDays, vacationDays } from '../stores/vacation';
   import { locale } from '../stores/locale';
   import LZString from 'lz-string';
+  import { importPlanFromHashAndApply, runsToDates } from '../lib/share';
 
   type PlanBundle = {
     year: number;
@@ -45,20 +46,7 @@
     return runs;
   }
 
-  function runsToDates(year: number, runs: number[][]): string[] {
-    const out: string[] = [];
-    for (const [start, len] of runs) {
-      for (let k = 0; k < len; k++) {
-        const d = new Date(year, 0, 1);
-        d.setDate(d.getDate() + start + k);
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        out.push(`${y}-${m}-${day}`);
-      }
-    }
-    return out;
-  }
+  // runsToDates is imported from lib/share
 
   function downloadJSON() {
     const data = makeBundle();
@@ -148,41 +136,15 @@
 
   function importFromHash() {
     importError = null;
-    const hash = window.location.hash || '';
-    const m = hash.match(/plan=([^&]+)/);
-    if (!m) return;
     try {
-      const raw = m[1];
-      if (!raw.startsWith('z:')) {
-        importError = 'Unsupported link format';
-        return;
-      }
-      const compressed = raw.slice(2);
-      const json = LZString.decompressFromEncodedURIComponent(compressed) || '';
-      const obj = JSON.parse(json) as any;
-      // Support compact and full schemas
-      if (obj && typeof obj === 'object' && Array.isArray(obj.r) && typeof obj.y === 'number') {
-        const selected = runsToDates(obj.y, obj.r as number[][]);
-        applyBundle({
-          year: obj.y,
-          region: obj.rg || $region,
-          totalDays: obj.td || $totalDays,
-          selected,
-          schema: obj.s || 2,
-        });
-      } else {
-        applyBundle(obj as PlanBundle);
-      }
-    } catch (e) {
+      const applied = importPlanFromHashAndApply(window.location.hash || '');
+      if (!applied) importError = 'Unsupported or empty link';
+    } catch {
       importError = 'Failed to parse plan from link';
     }
   }
 
-  // Try to read from URL hash on mount
-  if (typeof window !== 'undefined') {
-    // Delay to allow stores to initialize
-    setTimeout(importFromHash, 0);
-  }
+  // Link import now handled in App on mount (global). Keep manual import available.
 </script>
 
 <div class="space-y-3">
