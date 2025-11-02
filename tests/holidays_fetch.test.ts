@@ -15,6 +15,7 @@ describe('holidays_fetch fallback', () => {
     // Should contain Buß- und Bettag
     const hasRepent = Array.from(map.values()).includes('Buß- und Bettag');
     expect(hasRepent).toBe(true);
+    expect(map.has('2025-01-01')).toBe(true);
   });
 
   it('returns common Germany fallback for other regions on fetch error', async () => {
@@ -25,6 +26,7 @@ describe('holidays_fetch fallback', () => {
     // Should contain Neujahr
     const hasNewYear = Array.from(map.values()).includes('Neujahr');
     expect(hasNewYear).toBe(true);
+    const frauentagISO = Array.from(map.entries()).find(([, name]) => name === 'Internationaler Frauentag')?.[0];
+    expect(frauentagISO).toBe('2025-03-08');
   });
 });
-

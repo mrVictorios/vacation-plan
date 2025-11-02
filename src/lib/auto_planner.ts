@@ -8,6 +8,7 @@ export type AutoPlannerSettings = {
   preferEvenSpread?: boolean;
   respectSchoolHolidays?: boolean;
   ignoredMonths?: number[]; // months (0-11) to skip
+  minBreakDays?: number;
 };
 
 export type AutoPlanInput = {

@@ -16,13 +16,18 @@
   import { getSchoolHolidays, getSchoolDaysSet } from './lib/school_holidays';
   import { toISODate } from './lib/date';
   import SharePlan from './components/SharePlan.svelte';
+  import ChangelogTab from './components/ChangelogTab.svelte';
   import { density, calendarScale } from './stores/ui';
   import { buildSharePayload, importPlanFromHashAndApply } from './lib/share';
   import { onMount } from 'svelte';
   import { ZOOM_MIN, ZOOM_MAX } from './lib/constants';
-  
+
   import { activeSidebarTab } from './stores/ui';
-  
+
+  const HOLIDAY_API_CONSENT_KEY = 'holiday:api:consent';
+  let holidayApiConsent = false;
+  let showHolidayApiModal = false;
+
   // UI helpers for density toggle
   $: compactActive = $density === 'compact';
   $: comfortableActive = $density === 'comfortable';
@@ -47,8 +52,8 @@
     }
   }
 
-  // Load holidays when year or region changes
-  $: loadHolidays($currentYear, $region);
+  // Load holidays when year or region changes, honoring consent
+  $: loadHolidays($currentYear, $region, holidayApiConsent);
 
   const holidays = holidaysStore;
   const bridgeDays = bridgeDaysStore;
@@ -65,6 +70,22 @@
 
   onMount(() => {
     if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(HOLIDAY_API_CONSENT_KEY);
+        if (stored === 'true') {
+          holidayApiConsent = true;
+        } else if (stored === 'false') {
+          holidayApiConsent = false;
+        } else {
+          showHolidayApiModal = true;
+        }
+      } catch {
+        showHolidayApiModal = true;
+      }
+    } else {
+      showHolidayApiModal = true;
+    }
+    if (typeof window !== 'undefined') {
       // Try to import shared plan once on load
       importPlanFromHashAndApply(window.location.hash);
       // Listen for future hash changes (e.g., user pastes a link later)
@@ -75,6 +96,20 @@
       return () => window.removeEventListener('hashchange', onHash);
     }
   });
+
+  function acceptHolidayApiUsage() {
+    holidayApiConsent = true;
+    showHolidayApiModal = false;
+    try { localStorage.setItem(HOLIDAY_API_CONSENT_KEY, 'true'); } catch {}
+    loadHolidays($currentYear, $region, true);
+  }
+
+  function declineHolidayApiUsage() {
+    holidayApiConsent = false;
+    showHolidayApiModal = false;
+    try { localStorage.setItem(HOLIDAY_API_CONSENT_KEY, 'false'); } catch {}
+    loadHolidays($currentYear, $region, false);
+  }
 
   // Update URL with shareable link on state changes
   $: (function updateShareUrl() {
@@ -135,8 +170,17 @@
             <span>{ $locale === 'de-DE' ? 'Lade Feiertage…' : 'Loading holidays…' }</span>
           {:else if $holidaysError}
             <span class="text-red-600">{ $locale === 'de-DE' ? 'Feiertage (Fallback)' : 'Holidays (fallback)' }</span>
+          {:else if !holidayApiConsent}
+            <span class="text-amber-600">{ $locale === 'de-DE' ? 'Fallback-Daten (API deaktiviert)' : 'Fallback data (API disabled)' }</span>
           {:else}
             <span>{ $locale === 'de-DE' ? 'Feiertage' : 'Holidays' }</span>
+          {/if}
+          {#if !holidayApiConsent}
+            <button class="underline text-[11px] text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-white"
+              on:click={() => { showHolidayApiModal = true; }}
+            >
+              { $locale === 'de-DE' ? 'API aktivieren' : 'Enable API' }
+            </button>
           {/if}
         </div>
       </div>
@@ -172,6 +216,12 @@
               class={`flex-1 text-center px-3 py-2 text-sm rounded-t ${$activeSidebarTab === 'share' ? 'text-md-onPrimary bg-zinc-900 text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
               on:click={() => activeSidebarTab.set('share')}
             >{ $locale === 'de-DE' ? 'Teilen' : 'Share' }</button>
+            <button
+              role="tab"
+              aria-selected={$activeSidebarTab === 'changelog'}
+              class={`flex-1 text-center px-3 py-2 text-sm rounded-t ${$activeSidebarTab === 'changelog' ? 'text-md-onPrimary bg-blue-600 text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+              on:click={() => activeSidebarTab.set('changelog')}
+            >Changelog</button>
           </div>
         </div>
         <div class="p-3 md:p-4 flex-1 min-h-0 overflow-auto">
@@ -179,14 +229,45 @@
             <VacationManager />
           {:else if $activeSidebarTab === 'auto'}
             <AutoPlan />
-          {:else}
+          {:else if $activeSidebarTab === 'share'}
             <SharePlan />
+          {:else}
+            <ChangelogTab />
           {/if}
         </div>
       </div>
     </div>
   </section>
-  
+
+  {#if showHolidayApiModal}
+    <div class="fixed inset-0 z-30 flex items-center justify-center bg-black/50 px-4" role="dialog" aria-modal="true">
+      <div class="max-w-md w-full rounded-lg bg-white dark:bg-md-surfaceDark p-5 shadow-xl">
+        <h2 class="text-lg font-semibold text-zinc-900 dark:text-md-onSurfaceDark mb-3">
+          { $locale === 'de-DE' ? 'Feiertage API verwenden?' : 'Use the Feiertage API?' }
+        </h2>
+        <p class="text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+          {#if $locale === 'de-DE'}
+            Wir können aktuelle Feiertage direkt von feiertage-api.de abrufen. Damit erklärst du dich einverstanden, dass der Browser eine Anfrage an diese externe API sendet. Alternativ kannst du mit den eingebauten Fallback-Daten weiterarbeiten.
+          {:else}
+            We can fetch up-to-date holidays from feiertage-api.de. Accepting allows your browser to request data from this external API. You can also continue with the built-in fallback dataset.
+          {/if}
+        </p>
+        <div class="flex flex-col sm:flex-row sm:justify-end gap-2">
+          <button class="px-3 py-2 rounded-lg border border-zinc-300 dark:border-md-outline text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            on:click={declineHolidayApiUsage}
+          >
+            { $locale === 'de-DE' ? 'Nur Fallback nutzen' : 'Use fallback only' }
+          </button>
+          <button class="px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400"
+            on:click={acceptHolidayApiUsage}
+          >
+            { $locale === 'de-DE' ? 'API akzeptieren' : 'Accept API usage' }
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
   <footer class="text-xs text-zinc-500 dark:text-zinc-400">
     Holidays include Buß- und Bettag (Saxony only). Bridge day logic follows German common practice.
   </footer>

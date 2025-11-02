@@ -25,10 +25,10 @@ export const calendarScale = writable<number>(initialScale);
 calendarScale.subscribe((v) => safeSet('ui:calendarScale', String(v)));
 
 // Active sidebar tab persistence
-export type SidebarTab = 'vacation' | 'auto' | 'share';
+export type SidebarTab = 'vacation' | 'auto' | 'share' | 'changelog';
 const initialTab = (() => {
   const v = safeGet('ui:tab');
-  if (v === 'vacation' || v === 'auto' || v === 'share') return v as SidebarTab;
+  if (v === 'vacation' || v === 'auto' || v === 'share' || v === 'changelog') return v as SidebarTab;
   return 'vacation';
 })();
 export const activeSidebarTab = writable<SidebarTab>(initialTab);

@@ -1,5 +1,5 @@
 import type { GermanRegion } from '../stores/region';
-import { holidaysForYear as holidaysSaxony } from './holidays';
+import { toISODate } from './date';
 
 // Fetch holidays for German federal states. Primary API: feiertage-api.de
 // Example: https://feiertage-api.de/api/?jahr=2025&nur_land=SN
@@ -39,16 +39,14 @@ export async function fetchHolidaysForGermanRegion(year: number, regionCode: Ger
   }
 
   // Fallback: built-in Saxony calculator if SN, otherwise national common holidays
-  const fallback = regionCode === 'SN' ? holidaysSaxony(year) : commonGermany(year);
+  const fallback = fallbackHolidaysForRegion(year, regionCode);
   memCache.set(key, fallback);
   return fallback;
 }
 
-// Minimal nationwide holidays (no regional-only days)
-function commonGermany(year: number): Map<string, string> {
-  const holidayList: { date: Date; name: string }[] = [];
+export function fallbackHolidaysForRegion(year: number, region: GermanRegion): Map<string, string> {
   const easterDate = easterSunday(year);
-  holidayList.push(
+  const list: { date: Date; name: string }[] = [
     { date: new Date(year, 0, 1), name: 'Neujahr' },
     { date: addDays(easterDate, -2), name: 'Karfreitag' },
     { date: addDays(easterDate, 1), name: 'Ostermontag' },
@@ -58,9 +56,26 @@ function commonGermany(year: number): Map<string, string> {
     { date: new Date(year, 9, 3), name: 'Tag der Deutschen Einheit' },
     { date: new Date(year, 11, 25), name: '1. Weihnachtsfeiertag' },
     { date: new Date(year, 11, 26), name: '2. Weihnachtsfeiertag' },
-  );
+  ];
+
+  const add = (date: Date, name: string) => {
+    list.push({ date, name });
+  };
+
+  // Regional additions
+  if (['BW', 'BY', 'ST'].includes(region)) add(new Date(year, 0, 6), 'Heilige Drei Könige');
+  if (['BE', 'MV'].includes(region)) add(new Date(year, 2, 8), 'Internationaler Frauentag');
+  if (['BW', 'BY', 'HE', 'NW', 'RP', 'SL'].includes(region)) add(addDays(easterDate, 60), 'Fronleichnam');
+  if (region === 'SL') add(new Date(year, 7, 15), 'Mariä Himmelfahrt');
+  if (['BW', 'BY', 'NW', 'RP', 'SL'].includes(region)) add(new Date(year, 10, 1), 'Allerheiligen');
+  if (['BB', 'MV', 'SN', 'ST', 'TH', 'SH', 'NI', 'HB', 'HH'].includes(region)) add(new Date(year, 9, 31), 'Reformationstag');
+  if (region === 'TH') add(new Date(year, 8, 20), 'Weltkindertag');
+  if (region === 'SN') add(repentanceDay(year), 'Buß- und Bettag');
+
   const result = new Map<string, string>();
-  for (const holiday of holidayList) result.set(holiday.date.toISOString().slice(0, 10), holiday.name);
+  for (const holiday of list) {
+    result.set(toISODate(holiday.date), holiday.name);
+  }
   return result;
 }
 
@@ -82,4 +97,10 @@ function easterSunday(year: number): Date {
   const month = Math.floor((h + l - 7 * m + 114) / 31) - 1;
   const day = ((h + l - 7 * m + 114) % 31) + 1;
   return new Date(year, month, day);
+}
+
+function repentanceDay(year: number): Date {
+  const d = new Date(year, 10, 22);
+  while (d.getDay() !== 3) d.setDate(d.getDate() - 1);
+  return d;
 }

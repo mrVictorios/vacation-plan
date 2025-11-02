@@ -30,6 +30,7 @@
         preferEvenSpread: $autoPlannerSettings.preferEvenSpread,
         respectSchoolHolidays: $autoPlannerSettings.respectSchoolHolidays,
         ignoredMonths: $autoPlannerSettings.ignoredMonths,
+        minBreakDays: $autoPlannerSettings.minBreakDays,
       },
       schoolHolidays: school,
     };

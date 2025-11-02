@@ -1,4 +1,4 @@
-# Vacation Planner — Saxony (DE)
+npm run # Vacation Planner — Saxony (DE)
 
 Plan vacations for the whole year with German public holidays, optional bridge days, school holidays, and your own vacation allocation. The UI supports German/English, follows a Material‑style light/dark theme, and shows all 12 months at once (with zoom + scroll if needed).
 
@@ -43,7 +43,7 @@ Plan vacations for the whole year with German public holidays, optional bridge d
 - Automatic Planning: set parameters (bridge days on/off, max vacation/work weeks, even spread, ignore months, respect school holidays), generate multiple preview variants, and apply the plan.
 - Share: in the sidebar “Share plan” — export JSON, import from file/JSON, or copy a link. The URL hash auto‑updates with the current plan and can be shared directly.
 - Density & Zoom: use the Compact/Comfort toggle and Zoom slider to fit the full year; the calendar pane scrolls if necessary.
-- Tabs: the sidebar groups Vacation, Auto Plan, and Share in tabs.
+- Tabs: the sidebar groups Vacation, Auto Plan, Share, and Changelog in tabs.
 - Persistence: UI/planner settings and state are saved to localStorage (density, zoom, planner parameters, selected year, region, vacation days, total days, locale).
 
 ## Deployment (GitHub Pages)
@@ -52,7 +52,7 @@ Plan vacations for the whole year with German public holidays, optional bridge d
 - The workflow `.github/workflows/pages.yml` builds on pushes to `main` and deploys `dist/`.
 
 ## Customization
-- Region/holidays: at runtime, holidays are fetched from feiertage-api.de for the selected state. If network fails, the app falls back to built‑in rules (Saxony or national common holidays). To change logic, see `src/lib/holidays_fetch.ts` and `src/lib/holidays.ts`.
+- Region/holidays: at runtime, holidays are fetched from feiertage-api.de for the selected state (after the consent modal). If network fails or you continue without consent, the app falls back to built‑in rules per Bundesland. To change logic, see `src/lib/holidays_fetch.ts` and `src/lib/holidays.ts`.
 - Density/layout: adjust sizing in `MonthView.svelte` and `DayCell.svelte`.
 - Color theme: tune Tailwind tokens in `tailwind.config.cjs` and styles in `src/app.css` (Material‑inspired, system dark mode).
  - Planner constants: tweak scoring and UI limits in `src/lib/constants.ts` (e.g., min break days, min gap, zoom bounds, bridge/weekend weights).
@@ -65,6 +65,9 @@ Plan vacations for the whole year with German public holidays, optional bridge d
 ## Accessibility
 - Keyboard focus rings and adequate contrast for dark/light themes.
 - Week starts Monday; screen‑reader labels supplied via titles for day states.
+
+## Changelog
+- **2025-11-02** — Auto planner now honors the configurable minimum break length, regional holiday fallbacks provide accurate state data, an API consent modal was added for feiertage-api.de, and the new Changelog sidebar tab surfaces these updates in the app.
 
 ## License
 - MIT — see `LICENSE`.

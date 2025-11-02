@@ -141,4 +141,26 @@ describe('auto planner advanced behaviors', () => {
     });
     expect(overlaps).toBe(true);
   });
+
+  it('honors custom minimum break days when selecting windows', () => {
+    const budget = 3;
+    const ignored = Array.from({ length: 12 }, (_, month) => month).filter((m) => m !== 2); // focus on March
+    const detailed = generateAutoPlanDetailed({
+      year,
+      budget,
+      holidays,
+      bridgeDays: bridges,
+      settings: {
+        useBridgeDays: true,
+        maxConsecutiveVacationWeeks: 2,
+        maxConsecutiveWorkWeeks: 8,
+        preferEvenSpread: false,
+        ignoredMonths: ignored,
+        minBreakDays: 3,
+      },
+    });
+    expect(detailed.schedule.length).toBeGreaterThan(0);
+    expect(detailed.schedule.every(entry => entry.durationDays >= 3)).toBe(true);
+    expect(detailed.summary.usedVacationDays).toBeLessThanOrEqual(budget);
+  });
 });
