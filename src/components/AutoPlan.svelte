@@ -128,17 +128,17 @@
       </div>
     </div>
   </div>
-  <div class="flex items-center gap-2">
-    <button class="px-3 py-2 rounded-lg bg-md-primary text-md-onPrimary hover:opacity-95 active:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-md-primary" on:click={generatePreview}>
+  <div class="flex flex-wrap items-center gap-2">
+    <button class="btn btn-primary" on:click={generatePreview}>
       { $locale === 'de-DE' ? 'Vorschau erstellen' : 'Generate preview' }
     </button>
-    <button class="px-3 py-2 rounded-lg border border-zinc-300 dark:border-md-outline text-zinc-800 dark:text-md-onSurfaceDark hover:bg-zinc-50 dark:hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-md-primary disabled:opacity-50" on:click={applyPreview} disabled={!preview}>
+    <button class="btn btn-secondary" on:click={applyPreview} disabled={!preview}>
       { $locale === 'de-DE' ? 'Plan anwenden' : 'Apply plan' }
     </button>
     {#if variants.length > 0}
       <span class="text-xs text-zinc-600 dark:text-zinc-300">{ $locale === 'de-DE' ? 'Option' : 'Option' } {variantIndex + 1}/{variants.length} · Score {variants[variantIndex].summary.score.toFixed(1)}</span>
-      <button class="text-xs underline" on:click={() => { if (!variants.length) return; variantIndex = (variantIndex - 1 + variants.length) % variants.length; preview = variants[variantIndex]; }}>&lt;</button>
-      <button class="text-xs underline" on:click={() => { if (!variants.length) return; variantIndex = (variantIndex + 1) % variants.length; preview = variants[variantIndex]; }}>&gt;</button>
+      <button class="btn btn-ghost px-2 py-1 text-xs" on:click={() => { if (!variants.length) return; variantIndex = (variantIndex - 1 + variants.length) % variants.length; preview = variants[variantIndex]; }}>&lt;</button>
+      <button class="btn btn-ghost px-2 py-1 text-xs" on:click={() => { if (!variants.length) return; variantIndex = (variantIndex + 1) % variants.length; preview = variants[variantIndex]; }}>&gt;</button>
     {/if}
   </div>
 

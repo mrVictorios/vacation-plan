@@ -5,7 +5,7 @@
   
   import Calendar from './components/Calendar.svelte';
   import Legend from './components/Legend.svelte';
-  import { derived } from 'svelte/store';
+  import { derived, get } from 'svelte/store';
   import { locale } from './stores/locale';
   import LocaleSwitcher from './components/LocaleSwitcher.svelte';
   import RegionSelector from './components/RegionSelector.svelte';
@@ -14,10 +14,9 @@
   import { vacationDays, totalDays } from './stores/vacation';
   import AutoPlan from './components/AutoPlan.svelte';
   import { getSchoolHolidays, getSchoolDaysSet } from './lib/school_holidays';
-  import { toISODate } from './lib/date';
   import SharePlan from './components/SharePlan.svelte';
   import ChangelogTab from './components/ChangelogTab.svelte';
-  import { density, calendarScale } from './stores/ui';
+  import { density, calendarScale, themeMode, type ThemeMode } from './stores/ui';
   import { buildSharePayload, importPlanFromHashAndApply } from './lib/share';
   import { onMount } from 'svelte';
   import { ZOOM_MIN, ZOOM_MAX } from './lib/constants';
@@ -27,12 +26,44 @@
   const HOLIDAY_API_CONSENT_KEY = 'holiday:api:consent';
   let holidayApiConsent = false;
   let showHolidayApiModal = false;
+  let removeSystemThemeListener: (() => void) | null = null;
+  let isDesktop = false;
+  let mobileView: 'calendar' | 'assistant' = 'calendar';
 
-  // UI helpers for density toggle
-  $: compactActive = $density === 'compact';
-  $: comfortableActive = $density === 'comfortable';
-  $: compactClass = `px-2 py-1 text-xs rounded ${compactActive ? 'bg-zinc-900 text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`;
-  $: comfortableClass = `px-2 py-1 text-xs rounded ${comfortableActive ? 'bg-zinc-900 text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`;
+  function syncThemePreference(mode: ThemeMode) {
+    if (typeof window === 'undefined') return;
+    if (removeSystemThemeListener) {
+      removeSystemThemeListener();
+      removeSystemThemeListener = null;
+    }
+    const root = document.documentElement;
+    const body = document.body;
+    const apply = (isDark: boolean) => {
+      root.classList.toggle('dark', isDark);
+      body.classList.remove('theme-light', 'theme-dark');
+      body.classList.add(isDark ? 'theme-dark' : 'theme-light');
+    };
+
+    if (mode === 'system') {
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      const update = (matches: boolean) => apply(matches);
+      update(media.matches);
+      const listener = (event: MediaQueryListEvent) => update(event.matches);
+      if (typeof media.addEventListener === 'function') {
+        media.addEventListener('change', listener);
+        removeSystemThemeListener = () => media.removeEventListener('change', listener);
+      } else {
+        // @ts-expect-error legacy browsers
+        media.addListener(listener);
+        removeSystemThemeListener = () => {
+          // @ts-expect-error legacy browsers
+          media.removeListener(listener);
+        };
+      }
+    } else {
+      apply(mode === 'dark');
+    }
+  }
 
   function onScaleInput(e: Event) {
     const t = e.target as HTMLInputElement | null;
@@ -69,6 +100,10 @@
   let suppressShareUrlUpdate = true;
 
   onMount(() => {
+    let unsubscribeTheme: (() => void) | undefined;
+    let removeHashListener: (() => void) | undefined;
+    let removeDesktopListener: (() => void) | undefined;
+
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem(HOLIDAY_API_CONSENT_KEY);
@@ -82,19 +117,50 @@
       } catch {
         showHolidayApiModal = true;
       }
+
+      syncThemePreference(get(themeMode));
+      unsubscribeTheme = themeMode.subscribe((mode) => syncThemePreference(mode));
+
+      importPlanFromHashAndApply(window.location.hash);
+      const onHash = () => { importPlanFromHashAndApply(window.location.hash); };
+      window.addEventListener('hashchange', onHash);
+      queueMicrotask(() => { suppressShareUrlUpdate = false; });
+      removeHashListener = () => window.removeEventListener('hashchange', onHash);
+
+      const desktopMedia = window.matchMedia('(min-width: 1024px)');
+      const updateDesktop = () => {
+        isDesktop = desktopMedia.matches;
+        if (isDesktop) mobileView = 'calendar';
+      };
+      updateDesktop();
+      const desktopListener = (event: MediaQueryListEvent) => {
+        isDesktop = event.matches;
+        if (isDesktop) mobileView = 'calendar';
+      };
+      if (typeof desktopMedia.addEventListener === 'function') {
+        desktopMedia.addEventListener('change', desktopListener);
+        removeDesktopListener = () => desktopMedia.removeEventListener('change', desktopListener);
+      } else {
+        // @ts-expect-error legacy
+        desktopMedia.addListener(desktopListener);
+        removeDesktopListener = () => {
+          // @ts-expect-error legacy
+          desktopMedia.removeListener(desktopListener);
+        };
+      }
     } else {
       showHolidayApiModal = true;
     }
-    if (typeof window !== 'undefined') {
-      // Try to import shared plan once on load
-      importPlanFromHashAndApply(window.location.hash);
-      // Listen for future hash changes (e.g., user pastes a link later)
-      const onHash = () => { importPlanFromHashAndApply(window.location.hash); };
-      window.addEventListener('hashchange', onHash);
-      // Re-enable share URL updates after initial import attempt
-      queueMicrotask(() => { suppressShareUrlUpdate = false; });
-      return () => window.removeEventListener('hashchange', onHash);
-    }
+
+    return () => {
+      if (removeHashListener) removeHashListener();
+      if (removeDesktopListener) removeDesktopListener();
+      if (unsubscribeTheme) unsubscribeTheme();
+      if (removeSystemThemeListener) {
+        removeSystemThemeListener();
+        removeSystemThemeListener = null;
+      }
+    };
   });
 
   function acceptHolidayApiUsage() {
@@ -125,142 +191,196 @@
   })();
 </script>
 
-<main class="w-full h-full min-h-full p-3 md:p-4 flex flex-col gap-3">
-  <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <div>
-      <h1 class="text-2xl font-semibold tracking-tight">
-        {#if $locale === 'de-DE'}Urlaubsplaner — Deutschland{:else}Vacation Planner — Germany{/if}
-      </h1>
-      <p class="text-sm text-zinc-600 dark:text-zinc-400">
-        {#if $locale === 'de-DE'}Deutsche Feiertage je Bundesland, Brückentage (optional) und Schulferien. Plane lange Urlaube (≥7 Tage) und verteile sie gleichmäßig übers Jahr.{:else}German public holidays per region, optional bridge days, and school holidays. Plan long breaks (≥7 days) and spread them evenly across the year.{/if}
-      </p>
-    </div>
-    <div class="flex items-center gap-2 flex-wrap justify-end">
-      <LocaleSwitcher />
-      <RegionSelector />
-      <label class="text-sm text-zinc-600 dark:text-zinc-300 ml-2" for="year">{ $locale === 'de-DE' ? 'Jahr' : 'Year' }</label>
-      <select id="year" class="border border-zinc-300 dark:border-md-outline rounded-lg px-2 py-1 text-sm bg-white dark:bg-md-surfaceDark text-zinc-900 dark:text-md-onSurfaceDark focus:outline-none focus-visible:ring-2 focus-visible:ring-md-primary" value={$currentYear} on:change={onYearChange}>
-        {#each Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i) as y}
-          <option value={y}>{y}</option>
-        {/each}
-      </select>
-      <div class="ml-2 inline-flex items-center gap-1 border border-zinc-300 dark:border-md-outline rounded-lg p-0.5" role="tablist" aria-label="Density">
-        <button role="tab" aria-selected={$density === 'compact'}
-          class={compactClass}
-          on:click={() => density.set('compact')}
-        >{ $locale === 'de-DE' ? 'Kompakt' : 'Compact' }</button>
-        <button role="tab" aria-selected={$density === 'comfortable'}
-          class={comfortableClass}
-          on:click={() => density.set('comfortable')}
-        >{ $locale === 'de-DE' ? 'Komfort' : 'Comfort' }</button>
-      </div>
-      <label class="ml-2 text-xs text-zinc-600 dark:text-zinc-300">{ $locale === 'de-DE' ? 'Zoom' : 'Zoom' }</label>
-      <input type="range" min="80" max="120" step="5" class="ml-1 align-middle" value={$calendarScale * 100} on:input={onScaleInput} />
-      <span class="text-xs text-zinc-600 dark:text-zinc-300">{Math.round($calendarScale * 100)}%</span>
-      
-    </div>
-  </header>
+<main class="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+<header class="border-b border-zinc-200 bg-white/90 px-6 py-8 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/80">
+  <div class="mx-auto w-full max-w-7xl space-y-4">
+    <span class="section-title">{ $locale === 'de-DE' ? 'Jahresübersicht' : 'Year overview' }</span>
+    <h1 class="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-white">
+      {#if $locale === 'de-DE'}Urlaubsplaner für Deutschland{:else}Vacation Planner for Germany{/if}
+    </h1>
+    <p class="max-w-3xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+      {#if $locale === 'de-DE'}
+        Plane deinen Jahresurlaub mit regionalen Feiertagen, Brückentagen und Schulferien. Nutze automatische Vorschläge oder stelle deinen Plan manuell zusammen.
+      {:else}
+        Plan your year of time off with regional holidays, bridge days, and school breaks. Use automatic suggestions or build the schedule manually.
+      {/if}
+    </p>
+  </div>
+</header>
 
-  <section class="grid gap-3 lg:grid-cols-[3fr,1fr] flex-1 min-h-0">
-    <div class="card p-3 md:p-4 h-full min-h-0">
-      <div class="flex items-center justify-between">
-        <Legend />
-        <div class="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
-          {#if $loadingHolidays}
-            <span>{ $locale === 'de-DE' ? 'Lade Feiertage…' : 'Loading holidays…' }</span>
-          {:else if $holidaysError}
-            <span class="text-red-600">{ $locale === 'de-DE' ? 'Feiertage (Fallback)' : 'Holidays (fallback)' }</span>
-          {:else if !holidayApiConsent}
-            <span class="text-amber-600">{ $locale === 'de-DE' ? 'Fallback-Daten (API deaktiviert)' : 'Fallback data (API disabled)' }</span>
-          {:else}
-            <span>{ $locale === 'de-DE' ? 'Feiertage' : 'Holidays' }</span>
-          {/if}
-          {#if !holidayApiConsent}
-            <button class="underline text-[11px] text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-white"
-              on:click={() => { showHolidayApiModal = true; }}
+  <div class="px-6 py-8">
+    <div class="mx-auto w-full max-w-7xl mb-4 lg:hidden">
+      <div class="flex items-center gap-2 rounded-full border border-zinc-200 bg-white p-1 dark:border-md-outline dark:bg-zinc-900" role="tablist" aria-label={$locale === 'de-DE' ? 'Ansichten' : 'Views'}>
+        <button
+          role="tab"
+          aria-selected={mobileView === 'calendar'}
+          class={`flex-1 px-3 py-1.5 text-sm font-semibold rounded-full transition ${mobileView === 'calendar' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-300'}`}
+          on:click={() => { mobileView = 'calendar'; }}
+        >{ $locale === 'de-DE' ? 'Kalender' : 'Calendar' }</button>
+        <button
+          role="tab"
+          aria-selected={mobileView === 'assistant'}
+          class={`flex-1 px-3 py-1.5 text-sm font-semibold rounded-full transition ${mobileView === 'assistant' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-300'}`}
+          on:click={() => { mobileView = 'assistant'; }}
+        >{ $locale === 'de-DE' ? 'Assistent' : 'Assistant' }</button>
+      </div>
+    </div>
+    <div class="mx-auto grid w-full max-w-7xl gap-8 lg:grid-cols-[minmax(0,2.2fr)_minmax(320px,1fr)] xl:grid-cols-[minmax(0,3fr)_minmax(360px,1fr)]">
+      <section class={`panel flex flex-col gap-5 ${!isDesktop && mobileView === 'assistant' ? 'hidden lg:flex' : 'flex'}`}>
+        <div class="flex flex-wrap items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
+          <span class="section-title">{ $locale === 'de-DE' ? 'Kalender' : 'Calendar' }</span>
+          <div class="flex items-center gap-2">
+            <label for="calendarYear" class="font-semibold">{ $locale === 'de-DE' ? 'Jahr' : 'Year' }</label>
+            <select
+              id="calendarYear"
+              class="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-md-primary dark:border-md-outline dark:bg-md-surfaceDark dark:text-md-onSurfaceDark"
+              value={$currentYear}
+              on:change={onYearChange}
             >
-              { $locale === 'de-DE' ? 'API aktivieren' : 'Enable API' }
-            </button>
-          {/if}
+              {#each Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i) as y}
+                <option value={y}>{y}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="font-semibold">{ $locale === 'de-DE' ? 'Bundesland' : 'Region' }</label>
+            <RegionSelector />
+          </div>
+          <div class="flex items-center gap-2">
+            <label for="calendarZoom" class="font-semibold">{ $locale === 'de-DE' ? 'Zoom' : 'Zoom' }</label>
+            <input
+              id="calendarZoom"
+              type="range"
+              min="80"
+              max="150"
+              step="5"
+              class="w-32 accent-zinc-900 dark:accent-zinc-100"
+              value={$calendarScale * 100}
+              on:input={onScaleInput}
+            />
+            <span class="w-12 text-right font-semibold">{Math.round($calendarScale * 100)}%</span>
+          </div>
         </div>
-      </div>
-      <div class="mt-2 h-full min-h-0 overflow-auto">
-        <!-- Full-year calendar with zoom; inner wrapper width compensates scale -->
-        <div class="inline-block" style="transform-origin: top left; will-change: transform; transform: scale({$calendarScale}); width: calc(100% / {$calendarScale});">
-          {#key $currentYear}
-            <Calendar {holidays} {bridgeDays} year={$currentYear} schoolDays={schoolDays} />
-          {/key}
+        <div class="relative flex-1 overflow-hidden rounded-xl border border-zinc-100 bg-white dark:border-zinc-800 dark:bg-zinc-900/70">
+          <div class="h-full overflow-auto px-3 py-4">
+            <div class="inline-block" style="transform-origin: top left; transform: scale({$calendarScale}); width: calc(100% / {$calendarScale});">
+              {#key $currentYear}
+                <Calendar {holidays} {bridgeDays} year={$currentYear} schoolDays={schoolDays} />
+              {/key}
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+        <Legend />
+      </section>
 
-    <div class="hidden lg:block lg:sticky lg:top-3 self-start h-[calc(100vh-1rem)] min-h-0">
-      <div class="card p-0 md:p-0 h-full flex flex-col">
-        <div class="px-3 md:px-4 pt-3">
-          <div class="flex w-full items-center gap-1 border-b border-zinc-200 dark:border-md-outline" role="tablist" aria-label="Planner tabs">
+      <aside class={`panel flex h-full flex-col gap-5 ${!isDesktop && mobileView === 'calendar' ? 'hidden lg:flex' : 'flex'}`}>
+        <div class="rounded-xl border border-zinc-200 bg-white p-4 dark:border-md-outline dark:bg-zinc-900/70 flex flex-col gap-3">
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="section-title">{ $locale === 'de-DE' ? 'Sprache' : 'Language' }</span>
+            <LocaleSwitcher />
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="section-title">{ $locale === 'de-DE' ? 'Darstellung' : 'Appearance' }</span>
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                class={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${$themeMode === 'system' ? 'border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900' : 'border-zinc-300 text-zinc-600 dark:border-md-outline dark:text-zinc-300'}`}
+                on:click={() => themeMode.set('system')}
+              >System</button>
+              <button
+                class={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${$themeMode === 'light' ? 'border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900' : 'border-zinc-300 text-zinc-600 dark:border-md-outline dark:text-zinc-300'}`}
+                on:click={() => themeMode.set('light')}
+              >{ $locale === 'de-DE' ? 'Hell' : 'Light' }</button>
+              <button
+                class={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${$themeMode === 'dark' ? 'border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900' : 'border-zinc-300 text-zinc-600 dark:border-md-outline dark:text-zinc-300'}`}
+                on:click={() => themeMode.set('dark')}
+              >{ $locale === 'de-DE' ? 'Dunkel' : 'Dark' }</button>
+            </div>
+          </div>
+          <div class="space-y-2 text-xs text-zinc-600 dark:text-zinc-300">
+            {#if holidayApiConsent}
+              <div class="flex items-center gap-2">
+                <span class="badge border-transparent bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200">{ $locale === 'de-DE' ? 'API aktiv' : 'API enabled' }</span>
+                <button class="btn btn-secondary text-xs px-3 py-1.5" on:click={() => { showHolidayApiModal = true; }}>
+                  { $locale === 'de-DE' ? 'Einstellungen' : 'Preferences' }
+                </button>
+              </div>
+              <p>{ $locale === 'de-DE' ? 'Feiertage werden live von feiertage-api.de geladen.' : 'Holidays are synced live from feiertage-api.de.' }</p>
+            {:else}
+              <div class="flex items-center gap-2">
+                <span class="badge border-transparent bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">{ $locale === 'de-DE' ? 'Fallback aktiv' : 'Fallback active' }</span>
+                <button class="btn btn-primary text-xs px-3 py-1.5" on:click={() => { showHolidayApiModal = true; }}>
+                  { $locale === 'de-DE' ? 'API erlauben' : 'Enable API' }
+                </button>
+              </div>
+              <p>{ $locale === 'de-DE' ? 'Es werden eingebaute Feiertage ohne Live-Sync genutzt.' : 'Using built-in fallback holidays without live sync.' }</p>
+            {/if}
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <span class="section-title">{ $locale === 'de-DE' ? 'Assistent' : 'Assistant' }</span>
+          <div class="flex gap-2 rounded-full border border-zinc-200 bg-white p-1 dark:border-md-outline dark:bg-zinc-900" role="tablist" aria-label="Planner tabs">
             <button
               role="tab"
               aria-selected={$activeSidebarTab === 'vacation'}
-              class={`flex-1 text-center px-3 py-2 text-sm rounded-t ${$activeSidebarTab === 'vacation' ? 'text-md-onPrimary bg-green-600 text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+              class={`px-3 py-1.5 text-xs font-semibold rounded-full transition ${$activeSidebarTab === 'vacation' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-300'}`}
               on:click={() => activeSidebarTab.set('vacation')}
             >{ $locale === 'de-DE' ? 'Urlaub' : 'Vacation' }</button>
             <button
               role="tab"
               aria-selected={$activeSidebarTab === 'auto'}
-              class={`flex-1 text-center px-3 py-2 text-sm rounded-t ${$activeSidebarTab === 'auto' ? 'text-md-onPrimary bg-zinc-900 text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+              class={`px-3 py-1.5 text-xs font-semibold rounded-full transition ${$activeSidebarTab === 'auto' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-300'}`}
               on:click={() => activeSidebarTab.set('auto')}
             >{ $locale === 'de-DE' ? 'Auto-Plan' : 'Auto Plan' }</button>
             <button
               role="tab"
               aria-selected={$activeSidebarTab === 'share'}
-              class={`flex-1 text-center px-3 py-2 text-sm rounded-t ${$activeSidebarTab === 'share' ? 'text-md-onPrimary bg-zinc-900 text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+              class={`px-3 py-1.5 text-xs font-semibold rounded-full transition ${$activeSidebarTab === 'share' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-300'}`}
               on:click={() => activeSidebarTab.set('share')}
             >{ $locale === 'de-DE' ? 'Teilen' : 'Share' }</button>
             <button
               role="tab"
               aria-selected={$activeSidebarTab === 'changelog'}
-              class={`flex-1 text-center px-3 py-2 text-sm rounded-t ${$activeSidebarTab === 'changelog' ? 'text-md-onPrimary bg-blue-600 text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+              class={`px-3 py-1.5 text-xs font-semibold rounded-full transition ${$activeSidebarTab === 'changelog' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-300'}`}
               on:click={() => activeSidebarTab.set('changelog')}
             >Changelog</button>
           </div>
         </div>
-        <div class="p-3 md:p-4 flex-1 min-h-0 overflow-auto">
-          {#if $activeSidebarTab === 'vacation'}
-            <VacationManager />
-          {:else if $activeSidebarTab === 'auto'}
-            <AutoPlan />
-          {:else if $activeSidebarTab === 'share'}
-            <SharePlan />
-          {:else}
-            <ChangelogTab />
-          {/if}
+        <div class="flex-1 overflow-hidden rounded-xl border border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/70">
+          <div class="h-full overflow-auto">
+            {#if $activeSidebarTab === 'vacation'}
+              <VacationManager />
+            {:else if $activeSidebarTab === 'auto'}
+              <AutoPlan />
+            {:else if $activeSidebarTab === 'share'}
+              <SharePlan />
+            {:else}
+              <ChangelogTab />
+            {/if}
+          </div>
         </div>
-      </div>
+      </aside>
     </div>
-  </section>
+  </div>
 
   {#if showHolidayApiModal}
     <div class="fixed inset-0 z-30 flex items-center justify-center bg-black/50 px-4" role="dialog" aria-modal="true">
-      <div class="max-w-md w-full rounded-lg bg-white dark:bg-md-surfaceDark p-5 shadow-xl">
-        <h2 class="text-lg font-semibold text-zinc-900 dark:text-md-onSurfaceDark mb-3">
+      <div class="card w-full max-w-md p-6 shadow-2xl">
+        <h2 class="mb-3 text-lg font-semibold text-zinc-900 dark:text-md-onSurfaceDark">
           { $locale === 'de-DE' ? 'Feiertage API verwenden?' : 'Use the Feiertage API?' }
         </h2>
-        <p class="text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+        <p class="mb-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
           {#if $locale === 'de-DE'}
             Wir können aktuelle Feiertage direkt von feiertage-api.de abrufen. Damit erklärst du dich einverstanden, dass der Browser eine Anfrage an diese externe API sendet. Alternativ kannst du mit den eingebauten Fallback-Daten weiterarbeiten.
           {:else}
             We can fetch up-to-date holidays from feiertage-api.de. Accepting allows your browser to request data from this external API. You can also continue with the built-in fallback dataset.
           {/if}
         </p>
-        <div class="flex flex-col sm:flex-row sm:justify-end gap-2">
-          <button class="px-3 py-2 rounded-lg border border-zinc-300 dark:border-md-outline text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-            on:click={declineHolidayApiUsage}
-          >
-            { $locale === 'de-DE' ? 'Nur Fallback nutzen' : 'Use fallback only' }
+        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button class="btn btn-secondary" on:click={declineHolidayApiUsage}>
+            { $locale === 'de-DE' ? 'API ablehnen' : 'Reject API' }
           </button>
-          <button class="px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400"
-            on:click={acceptHolidayApiUsage}
-          >
+          <button class="btn btn-primary" on:click={acceptHolidayApiUsage}>
             { $locale === 'de-DE' ? 'API akzeptieren' : 'Accept API usage' }
           </button>
         </div>
@@ -268,7 +388,7 @@
     </div>
   {/if}
 
-  <footer class="text-xs text-zinc-500 dark:text-zinc-400">
+  <footer class="px-6 pb-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
     Holidays include Buß- und Bettag (Saxony only). Bridge day logic follows German common practice.
   </footer>
 </main>

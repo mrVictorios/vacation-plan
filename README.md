@@ -68,6 +68,7 @@ Plan vacations for the whole year with German public holidays, optional bridge d
 
 ## Changelog
 - **2025-11-02** — Auto planner now honors the configurable minimum break length, regional holiday fallbacks provide accurate state data, an API consent modal was added for feiertage-api.de, and the new Changelog sidebar tab surfaces these updates in the app.
+- **2025-11-03** — Refreshed the layout: year/region/zoom controls sit above the calendar with the legend below; assistant panel now houses language/theme/API preferences and the selected-days list caps at 300px with a scroll fade; holiday sync status moved into the preferences card.
 
 ## License
 - MIT — see `LICENSE`.

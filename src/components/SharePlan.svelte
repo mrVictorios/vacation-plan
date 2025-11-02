@@ -150,13 +150,13 @@
 <div class="space-y-3">
   <h3 class="text-base font-semibold">{ $locale === 'de-DE' ? 'Plan teilen' : 'Share plan' }</h3>
   <div class="flex flex-wrap gap-2">
-    <button class="px-3 py-2 rounded-lg border border-zinc-300 dark:border-md-outline hover:bg-zinc-50 dark:hover:bg-zinc-800" on:click={downloadJSON}>
+    <button class="btn btn-secondary" on:click={downloadJSON}>
       { $locale === 'de-DE' ? 'Export als JSON' : 'Export JSON' }
     </button>
-    <button class="px-3 py-2 rounded-lg bg-zinc-900 text-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-md-primary" on:click={copyLink}>
+    <button class="btn btn-primary" on:click={copyLink}>
       { $locale === 'de-DE' ? 'Link kopieren' : 'Copy link' }
     </button>
-    <label class="px-3 py-2 rounded-lg border border-zinc-300 dark:border-md-outline cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800">
+    <label class="btn btn-secondary cursor-pointer">
       <input type="file" accept="application/json" class="hidden" on:change={onFileSelected}>
       { $locale === 'de-DE' ? 'Datei importieren' : 'Import file' }
     </label>
@@ -165,7 +165,7 @@
     <label class="block text-xs text-zinc-600 dark:text-zinc-300">{ $locale === 'de-DE' ? 'Plan einfügen (JSON)' : 'Paste plan (JSON)' }</label>
     <textarea class="w-full h-24 border border-zinc-300 dark:border-md-outline rounded p-2 bg-white dark:bg-md-surfaceDark" bind:value={importText} />
     <div class="flex items-center gap-2">
-      <button class="px-3 py-2 rounded-lg bg-md-primary text-md-onPrimary hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-md-primary" on:click={importFromText}>
+      <button class="btn btn-primary" on:click={importFromText}>
         { $locale === 'de-DE' ? 'Importieren' : 'Import' }
       </button>
       {#if importError}

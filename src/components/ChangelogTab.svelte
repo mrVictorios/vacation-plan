@@ -8,6 +8,13 @@
 
   const entries: Entry[] = [
     {
+      date: '2025-11-03',
+      text: {
+        de: 'Layout-Überarbeitung: Steuerung für Jahr, Bundesland und Zoom direkt über dem Kalender, Legende darunter, Einstellungen (Sprache, Theme, API) im Assistenten, ausgewählte Tage mit Scroll-Fade.',
+        en: 'Layout refresh: year/region/zoom controls moved above the calendar with the legend below, assistant now holds language/theme/API preferences, and selected days include a scroll fade.',
+      },
+    },
+    {
       date: '2025-11-02',
       text: {
         de: 'Automatische Planung berücksichtigt jetzt die Mindestanzahl an Urlaubstagen, Feiertage-Fallbacks liefern für alle Bundesländer exakte Daten und der API-Hinweis erscheint als bestätigungsmodal.',
